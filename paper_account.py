@@ -71,7 +71,7 @@ class PaperAccount:
             "usd": round(self.usd, 2),
             "asset": round(self.asset, 6),
             "equity": round(self.usd + self.asset * price, 2),
-            "entry": self.entry,
+            "entry": round(self.entry, 6) if self.entry is not None else None,
         }
 
 

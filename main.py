@@ -14,7 +14,7 @@ ASSET_RULES = {
     "BTC-USD": {"decimals": 2, "min_usd": 0.01},
     "ETH-USD": {"decimals": 2, "min_usd": 0.10},
     "DOGE-USD": {"decimals": 2, "min_usd": 0.15},
-    "SHIB-USD": {"decimals": 8, "min_usd": 0.05},
+    "SHIB-USD": {"decimals": 9, "min_usd": 0.05},
 }
 
 
@@ -108,16 +108,16 @@ def cmd_sma_bot(a):
                     if a.live:
                         out = rh.market_order(symbol, "buy", quantity=qty)
                         print(out)
-                        trade_msg = f"BUY {symbol} qty={qty} @ {p:.6f}"
+                        trade_msg = f"\nBUY {symbol} qty={qty} @ {p:.6f}"
                         print(trade_msg)
-                        send_trade_email(trade_msg)
+                        #send_trade_email(trade_msg)
                         risk.record(trade_usd)
                     else:
                         account.buy(qty, p, symbol)
-                        print(f"(paper) BUY {symbol} qty={qty} @ {p:.6f} | {account.summary(p)}")
-                        trade_msg = f"BUY {symbol} qty={qty} @ {p:.6f}"
-                        print(trade_msg)
-                        send_trade_email(trade_msg)
+                        print(f"\n(paper) BUY {symbol} qty={qty} @ {p:.6f} | {account.summary(p)}")
+                        #trade_msg = f"BUY {symbol} qty={qty} @ {p:.6f}"
+                        #print(trade_msg)
+                        #send_trade_email(trade_msg)
                     position, entry, peak = 1, p, p
 
             elif sig in ("bear", "sell") and position == 1:
@@ -125,14 +125,14 @@ def cmd_sma_bot(a):
                 qty = min(account.asset, qty_from_usd(symbol, trade_usd, side="sell", decimals=dec))
                 if a.live:
                     out = rh.market_order(symbol, "sell", quantity=qty)
-                    trade_msg = f"BUY {symbol} qty={qty} @ {p:.6f}"
-                    send_trade_email(trade_msg)
+                    trade_msg = f"\nBUY {symbol} qty={qty} @ {p:.6f}"
+                    #send_trade_email(trade_msg)
                     print(out)
                 else:
                     account.sell(qty, p, symbol)
-                    print(f"(paper) SELL {symbol} qty={qty} @ {p:.6f} | {account.summary(p)}")
-                    trade_msg = f"BUY {symbol} qty={qty} @ {p:.6f}"                   
-                    send_trade_email(trade_msg)
+                    print(f"\n(paper) SELL {symbol} qty={qty} @ {p:.6f} | {account.summary(p)}")
+                    #trade_msg = f"BUY {symbol} qty={qty} @ {p:.6f}"                   
+                    #send_trade_email(trade_msg)
                 position, entry, peak = 0, None, None
 
             time.sleep(a.period)

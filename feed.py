@@ -1,5 +1,6 @@
 # feed.py
 import requests
+import sys
 
 def _fetch_coinbase(symbol):
     url = f"https://api.coinbase.com/v2/prices/{symbol}/spot"
@@ -39,6 +40,10 @@ def coinbase_spot(symbol, retries=3, base_delay=2):
             try:
                 price = fn(symbol)
                 #print(f"[feed] {name} price {symbol} = {price}")
+                
+                sys.stdout.write(f"\r[feed] {name} price {symbol} = {price:.9f}")
+                sys.stdout.flush()
+
                 return price
             except Exception as e:
                 wait = base_delay * (2 ** i) + random.uniform(0, 1)
