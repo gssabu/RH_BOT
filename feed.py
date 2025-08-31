@@ -32,7 +32,7 @@ def coinbase_spot(symbol, retries=3, base_delay=2):
     GREEN = "\033[92m"
     RED = "\033[91m"
     RESET = "\033[0m"
-    
+
     prev_price = None
     sources = [
         ("Coinbase", _fetch_coinbase),
@@ -43,31 +43,25 @@ def coinbase_spot(symbol, retries=3, base_delay=2):
     for name, fn in sources:
         for i in range(retries):
             try:
-                for tick in feed:
-                    price = tick["price"]
-                
-                    if prev_price is None:
-                        price = fn(symbol)
-                    #print(f"[feed] {name} price {symbol} = {price}")
+                price = fn(symbol)
+                if prev_price is not None:
+                    diff = price - prev_price
+                    if diff >= 0:
+                        color = GREEN
+                        sign = "+"
                     else:
-                        diff = price - prev_price
-                        if diff >= 0:
-                            color = GREEN
-                            sign = "+"
-                        else:
-                            color = RED
-                            sign = "-"
-                                    
-                        sys.stdout.write(f"[feed] Coinbase price {symbol} = {price:.6f}   prev: {prev_price:.6f}, {color}{sign}{abs(diff):.6f}{RESET})")
-                        sys.stdout.flush()
-
-                    return price
+                        color = RED
+                        sign = "-"
+                    sys.stdout.write(f"[feed] {name} price {symbol} = {price:.6f}   prev: {prev_price:.6f}, {color}{sign}{abs(diff):.6f}{RESET}\n")
+                    sys.stdout.flush()
+                prev_price = price
+                return price
             except Exception as e:
                 wait = base_delay * (2 ** i) + random.uniform(0, 1)
                 print(f"[feed error] {name} {e} | retry {i+1}/{retries} in {wait:.1f}s")
                 time.sleep(wait)
         print(f"[feed] {name} failed after {retries} retries, switching...")
-    
+
     raise RuntimeError(f"All feeds failed for {symbol}")
 
 def qty_from_usd(symbol: str, usd: float, side: str = "buy", decimals: int = 8) -> float:
@@ -84,5 +78,6 @@ def qty_from_usd(symbol: str, usd: float, side: str = "buy", decimals: int = 8) 
     qty = usd / price
     # round to something sane; many assets allow up to 8 decimals
     return round(qty, decimals)
+
 
 
