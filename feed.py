@@ -1,6 +1,7 @@
 # feed.py
 import requests
 import sys
+import time
 
 def _fetch_coinbase(symbol):
     url = f"https://api.coinbase.com/v2/prices/{symbol}/spot"
@@ -78,6 +79,7 @@ def qty_from_usd(symbol: str, usd: float, side: str = "buy", decimals: int = 8) 
     qty = usd / price
     # round to something sane; many assets allow up to 8 decimals
     return round(qty, decimals)
+
 
 
 
