@@ -29,6 +29,11 @@ def coinbase_spot(symbol, retries=3, base_delay=2):
     Multi-source feed: try Coinbase → Kraken → Robinhood.
     Retries each source with exponential backoff before failing.
     """
+    GREEN = "\033[92m"
+    RED = "\033[91m"
+    RESET = "\033[0m"
+    
+    prev_price = None
     sources = [
         ("Coinbase", _fetch_coinbase),
         ("Kraken", _fetch_kraken),
@@ -38,13 +43,25 @@ def coinbase_spot(symbol, retries=3, base_delay=2):
     for name, fn in sources:
         for i in range(retries):
             try:
-                price = fn(symbol)
-                #print(f"[feed] {name} price {symbol} = {price}")
+                for tick in feed:
+                    price = tick["price"]
                 
-                sys.stdout.write(f"\r[feed] {name} price {symbol} = {price:.9f}")
-                sys.stdout.flush()
+                    if prev_price is None:
+                        price = fn(symbol)
+                    #print(f"[feed] {name} price {symbol} = {price}")
+                    else:
+                        diff = price - prev_price
+                        if diff >= 0:
+                            color = GREEN
+                            sign = "+"
+                        else:
+                            color = RED
+                            sign = "-"
+                                    
+                        sys.stdout.write(f"\r[feed] {name} price {symbol} = {price:.9f}")
+                        sys.stdout.flush()
 
-                return price
+                    return price
             except Exception as e:
                 wait = base_delay * (2 ** i) + random.uniform(0, 1)
                 print(f"[feed error] {name} {e} | retry {i+1}/{retries} in {wait:.1f}s")
@@ -67,3 +84,4 @@ def qty_from_usd(symbol: str, usd: float, side: str = "buy", decimals: int = 8) 
     qty = usd / price
     # round to something sane; many assets allow up to 8 decimals
     return round(qty, decimals)
+
