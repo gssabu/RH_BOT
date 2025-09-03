@@ -1,5 +1,5 @@
 {
-  "BTC": { "max_buy_price": 31000, "min_sell_price": 28000 },
-  "DOGE": { "max_buy_price": 0.12, "min_sell_price": 0.07 },
-  "SHIB": { "max_buy_price": 0.000010, "min_sell_price": 0.000006 }
+  "BTC": { "max_buy_price": 120000, "min_sell_price": 110000 },
+  "DOGE": { "max_buy_price": 0.22, "min_sell_price": 0.19 },
+  "SHIB": { "max_buy_price": 0.000013, "min_sell_price": 0.000012 }
 }
