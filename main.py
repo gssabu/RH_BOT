@@ -1,5 +1,5 @@
 # main.py
-import argparse, json, time
+import argparse, json, time, os
 from client import RH
 from feed import coinbase_spot, qty_from_usd
 from strategy import SMAStrategy, PriceMoveStrategy, SwingStrategy, SwingWithTrend
@@ -17,6 +17,15 @@ ASSET_RULES = {
     "SHIB-USD": {"decimals": 9, "min_usd": 0.05},
 }
 
+def load_limits(path="limits.json"):
+    if not os.path.exists(path):
+        return {}
+    with open(path) as f:
+        return json.load(f)
+limits = load_limits()
+coin = args.symbol.upper()   # e.g. "BTC"
+
+coin_limits = limits.get(coin, {})
 
 def allowed_time():
     now = datetime.datetime.utcnow().hour
@@ -180,4 +189,5 @@ def build():
 if __name__ == "__main__":
     args = build().parse_args()
     args.func(args)
+
 
