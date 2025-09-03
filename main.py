@@ -192,8 +192,8 @@ def build():
     s3.add_argument("--atr-mult", type=float, default=1.0, help="ATR multiplier")
     s3.add_argument("--atr-window", type=int, default=14, help="ATR window length")
     s3.add_argument("--rsi-window", type=int, default=14, help="RSI window length")
-    s3.add_argument("--buy_pct", type=int, default=0.5)
-    s3.add_argument("--buy_pct", type=int, default=2)
+    s3.add_argument("--buy_pct", type=float, default=0.5)
+    s3.add_argument("--buy_pct", type=float, default=2)
     s3.set_defaults(func=cmd_sma_bot)
 
     return p
@@ -201,6 +201,7 @@ def build():
 if __name__ == "__main__":
     args = build().parse_args()
     args.func(args)
+
 
 
 
