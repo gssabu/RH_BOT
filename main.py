@@ -22,10 +22,6 @@ def load_limits(path="limits.json"):
         return {}
     with open(path) as f:
         return json.load(f)
-limits = load_limits()
-coin = args.symbol.upper()   # e.g. "BTC"
-
-coin_limits = limits.get(coin, {})
 
 def allowed_time():
     now = datetime.datetime.utcnow().hour
@@ -57,8 +53,22 @@ def cmd_sma_bot(a):
         strat = SwingStrategy(threshold=a.threshold)
         print(f"Running Swing strategy: threshold={a.threshold}")
     elif a.strategy == "swingT":
-        strat = SwingWithTrend(threshold=a.threshold, trend_window=a.trend)
-        print(f"Running Swing-with-Trend strategy: threshold={a.threshold}, trend_window={a.trend}")
+        limits = load_limits()
+        coin = a.symbol.split("-")[0].upper()   # "BTC" from "BTC-USD"
+        coin_limits = limits.get(coin, {})
+
+        strat = SwingWithTrend(
+            buy_pct=0.5,   # TODO: expose as CLI args if you want
+            sell_pct=2.0,  # TODO: expose as CLI args if you want
+            atr_mult=a.atr_mult,
+            atr_window=a.atr_window,
+            rsi_window=a.rsi_window,
+            trend_window=a.trend,
+            max_buy_price=coin_limits.get("max_buy_price"),
+            min_sell_price=coin_limits.get("min_sell_price")
+        )
+
+        print(f"Running Swing-with-Trend strategy: buy_pct={buy_pact} sell_pct={sell_pact} trend_window={a.trend} limits={coin_limits}")
     else:
         strat = PriceMoveStrategy(threshold=a.threshold)
         print(f"Running PriceMove strategy: threshold={a.threshold}")
@@ -189,5 +199,6 @@ def build():
 if __name__ == "__main__":
     args = build().parse_args()
     args.func(args)
+
 
 
