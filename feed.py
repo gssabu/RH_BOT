@@ -49,7 +49,7 @@ def coinbase_spot(symbol, retries=3, base_delay=2):
                     sign = "+" if diff >= 0 else "-"
                     sys.stdout.write(
                         f"\r[feed] {name} price {symbol} = {price:.8f}   "
-                        f"prev: {coinbase_spot.prev_price:.8f}, {color}{sign}{abs(diff):.8f}{RESET}"
+                        f"prev: {coinbase_spot.prev_price:.8f}, {color}{sign}{abs(diff):.8f  }{RESET}"
                     )
                     sys.stdout.flush()
                 coinbase_spot.prev_price = price
@@ -77,6 +77,7 @@ def qty_from_usd(symbol: str, usd: float, side: str = "buy", decimals: int = 8) 
     qty = usd / price
     # round to something sane; many assets allow up to 8 decimals
     return round(qty, decimals)
+
 
 
 
