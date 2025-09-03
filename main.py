@@ -58,8 +58,8 @@ def cmd_sma_bot(a):
         coin_limits = limits.get(coin, {})
 
         strat = SwingWithTrend(
-            buy_pct=0.5,   # TODO: expose as CLI args if you want
-            sell_pct=2.0,  # TODO: expose as CLI args if you want
+            buy_pct=a.buy_pct,    
+            sell_pct=a.sell_pct,  
             atr_mult=a.atr_mult,
             atr_window=a.atr_window,
             rsi_window=a.rsi_window,
@@ -192,8 +192,8 @@ def build():
     s3.add_argument("--atr-mult", type=float, default=1.0, help="ATR multiplier")
     s3.add_argument("--atr-window", type=int, default=14, help="ATR window length")
     s3.add_argument("--rsi-window", type=int, default=14, help="RSI window length")
-    s3.add_argument("--buy_pct", type=float, default=0.5)
-    s3.add_argument("--buy_pct", type=float, default=2)
+    s3.add_argument("--buy_pct", type=float, default=0.5, help="Percent dip from recent high to trigger buy (for swingT strategy)")
+    s3.add_argument("--sell_pct", type=float, default=2.0, help="Percent rise from recent low to trigger sell (for swingT strategy)")
     s3.set_defaults(func=cmd_sma_bot)
 
     return p
@@ -201,6 +201,7 @@ def build():
 if __name__ == "__main__":
     args = build().parse_args()
     args.func(args)
+
 
 
 
