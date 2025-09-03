@@ -116,7 +116,7 @@ def cmd_sma_bot(a):
                         print(out)
                     else:
                         account.sell(qty, p, symbol)
-                        print(f"(paper) TRAIL STOP SELL {symbol} qty={qty} @ {p:.6f} | {account.summary(p)}")
+                        print(f"\n(paper) TRAIL STOP SELL {symbol} qty={qty} @ {p:.8f} | {account.summary(p)}")
                     position, entry, peak = 0, None, None
 
             # entry/exit
@@ -130,14 +130,14 @@ def cmd_sma_bot(a):
                     if a.live:
                         out = rh.market_order(symbol, "buy", quantity=qty)
                         print(out)
-                        trade_msg = f"\nBUY {symbol} qty={qty} @ {p:.6f}"
+                        trade_msg = f"\nBUY {symbol} qty={qty} @ {p:.8f}"
                         print(trade_msg)
                         #send_trade_email(trade_msg)
                         risk.record(trade_usd)
                     else:
                         account.buy(qty, p, symbol)
-                        print(f"\n(paper) BUY {symbol} qty={qty} @ {p:.6f} | {account.summary(p)}")
-                        trade_msg = f"BUY {symbol} qty={qty} @ {p:.6f}"
+                        print(f"\n(paper) BUY {symbol} qty={qty} @ {p:.8f} | {account.summary(p)}")
+                        trade_msg = f"BUY {symbol} qty={qty} @ {p:.8f}"
                         #print(trade_msg)
                         send_trade_email(trade_msg)
                     position, entry, peak = 1, p, p
@@ -147,13 +147,13 @@ def cmd_sma_bot(a):
                 qty = min(account.asset, qty_from_usd(symbol, trade_usd, side="sell", decimals=dec))
                 if a.live:
                     out = rh.market_order(symbol, "sell", quantity=qty)
-                    trade_msg = f"\nBUY {symbol} qty={qty} @ {p:.6f}"
+                    trade_msg = f"\nBUY {symbol} qty={qty} @ {p:.8f}"
                     #send_trade_email(trade_msg)
                     print(out)
                 else:
                     account.sell(qty, p, symbol)
-                    print(f"\n(paper) SELL {symbol} qty={qty} @ {p:.6f} | {account.summary(p)}")
-                    trade_msg = f"BUY {symbol} qty={qty} @ {p:.6f}"                   
+                    print(f"\n(paper) SELL {symbol} qty={qty} @ {p:.8f} | {account.summary(p)}")
+                    trade_msg = f"BUY {symbol} qty={qty} @ {p:.8f}"                   
                     send_trade_email(trade_msg)
                 position, entry, peak = 0, None, None
 
@@ -204,6 +204,7 @@ def build():
 if __name__ == "__main__":
     args = build().parse_args()
     args.func(args)
+
 
 
 
