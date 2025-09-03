@@ -54,7 +54,7 @@ def cmd_sma_bot(a):
         print(f"Running Swing strategy: threshold={a.threshold}")
     elif a.strategy == "swingT":
         limits = load_limits()
-        coin = a.symbol.split("-")[0].upper()   # "BTC" from "BTC-USD"
+        coin = a.symbol.upper()   # "SHIB-USD"
         coin_limits = limits.get(coin, {})
 
         strat = SwingWithTrend(
@@ -201,6 +201,7 @@ def build():
 if __name__ == "__main__":
     args = build().parse_args()
     args.func(args)
+
 
 
 
