@@ -122,7 +122,7 @@ class SwingWithTrend:
         signal = None
         rsi_val = self.rsi.update(price)
 
-        # compute volatility-adjusted thresholds
+        # compute volatility-adjusted thresholds (hybrid)
         base_buy  = self.last_high * self.buy_pct
         base_sell = self.last_low  * self.sell_pct
 
