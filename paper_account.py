@@ -14,7 +14,7 @@ class PaperAccount:
         fill_price = price * (1 + self.slippage)
         cost = qty * fill_price
         fee = cost * self.fee_rate
-        total_cost = cost + fee
+        total_cost = cost
 
         if self.usd >= total_cost:
             self.usd -= total_cost
@@ -73,5 +73,6 @@ class PaperAccount:
             "equity": round(self.usd + self.asset * price, 2),
             "entry": round(self.entry, 6) if self.entry is not None else None,
         }
+
 
 
