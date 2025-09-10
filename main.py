@@ -117,7 +117,7 @@ def cmd_sma_bot(a):
                     else:
                         account.sell(qty, p, symbol)
                         print(f"\n(paper) TRAIL STOP SELL {symbol} qty={qty} @ {p:.8f} | {account.summary(p)}")
-                        trade_msg = f"SELL {symbol} qty={qty} @ {p:.8f}"                   
+                        trade_msg = f"TRAIL SELL {symbol} qty={qty} @ {p:.8f}"                   
                         send_trade_email(trade_msg)
                     position, entry, peak = 0, None, None
 
@@ -149,13 +149,13 @@ def cmd_sma_bot(a):
                 qty = min(account.asset, qty_from_usd(symbol, trade_usd, side="sell", decimals=dec))
                 if a.live:
                     out = rh.market_order(symbol, "sell", quantity=qty)
-                    trade_msg = f"\nBUY {symbol} qty={qty} @ {p:.8f}"
+                    trade_msg = f"\nSELL {symbol} qty={qty} @ {p:.8f}"
                     #send_trade_email(trade_msg)
                     print(out)
                 else:
                     account.sell(qty, p, symbol)
                     print(f"\n(paper) SELL {symbol} qty={qty} @ {p:.8f} | {account.summary(p)}")
-                    trade_msg = f"BUY {symbol} qty={qty} @ {p:.8f}"                   
+                    trade_msg = f"SELL {symbol} qty={qty} @ {p:.8f}"                   
                     send_trade_email(trade_msg)
                 position, entry, peak = 0, None, None
 
@@ -188,7 +188,7 @@ def build():
     s3.add_argument("--period", type=int, default=15, help="seconds between polls")
     s3.add_argument("--notional", type=float, default=0.05, help="USD per trade")
     s3.add_argument("--live", action="store_true", help="send real orders")
-    s3.add_argument("--trail", type=float, default=1.8, help="trailing stop in %")
+    s3.add_argument("--trail", type=float, default=2.0, help="trailing stop in %")
     s3.add_argument("--strategy", choices=["sma", "move", "swing", "swingT"], default="sma", help="strategy type")
     s3.add_argument("--threshold", type=float, default=0.0001, help="price move threshold (for 'move' strategy)")
     s3.add_argument("--trend", type=int, default=50, help="trend SMA window (for swing)")
@@ -197,7 +197,7 @@ def build():
     s3.add_argument("--atr-mult", type=float, default=1.0, help="ATR multiplier")
     s3.add_argument("--atr-window", type=int, default=1.4, help="ATR window length")
     s3.add_argument("--rsi-window", type=int, default=1.4, help="RSI window length")
-    s3.add_argument("--buy_pct", type=float, default=0.1, help="Percent dip from recent high to trigger buy (for swingT strategy)")
+    s3.add_argument("--buy_pct", type=float, default=1.0, help="Percent dip from recent high to trigger buy (for swingT strategy)")
     s3.add_argument("--sell_pct", type=float, default=2.0, help="Percent rise from recent low to trigger sell (for swingT strategy)")
     s3.set_defaults(func=cmd_sma_bot)
 
@@ -206,6 +206,7 @@ def build():
 if __name__ == "__main__":
     args = build().parse_args()
     args.func(args)
+
 
 
 
