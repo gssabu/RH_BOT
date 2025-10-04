@@ -14,7 +14,7 @@ ALERT_TO = os.getenv("ALERT_TO")
 
 def send_trade_email(message, subject="RH Bot Trade Alert"):
     msg = MIMEText(message)
-    msg["Subject"] = subject
+    msg["Subject"] = message
     msg["From"] = ALERT_FROM
     msg["To"] = ALERT_TO
 
@@ -26,3 +26,4 @@ def send_trade_email(message, subject="RH Bot Trade Alert"):
         print(f"[email sent] {message}")
     except Exception as e:
         print(f"[email error] {e}")
+
