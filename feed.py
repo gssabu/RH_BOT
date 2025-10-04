@@ -2,6 +2,7 @@
 import requests
 import sys
 import time
+import random
 
 def _fetch_coinbase(symbol):
     url = f"https://api.coinbase.com/v2/prices/{symbol}/spot"
@@ -71,12 +72,13 @@ def qty_from_usd(symbol: str, usd: float, side: str = "buy", decimals: int = 8) 
     """
     price = coinbase_spot(symbol)          # e.g., BTC-USD price
     if side == "buy":
-        price *= 1.00    # +85 bps skid
+        price *= 1.005    # +85 bps skid
     elif side == "sell":
-        price *= 1.0085    # -5 bps
+        price *= 0.995    # -5 bps
     qty = usd / price
     # round to something sane; many assets allow up to 8 decimals
     return round(qty, decimals)
+
 
 
 
