@@ -159,7 +159,7 @@ class SwingWithTrend:
 
 
 class ATR:
-    def __init__(self, window=0.14):
+    def __init__(self, window=14):
         self.window = window
         self.tr = []
 
@@ -173,7 +173,7 @@ class ATR:
         return sum(self.tr) / len(self.tr) if self.tr else None
         
 class RSI:
-    def __init__(self, window=0.14):
+    def __init__(self, window=14):
         self.window = window
         self.gains = []
         self.losses = []
@@ -198,4 +198,5 @@ class RSI:
             return 100
         rs = avg_gain / avg_loss
         return 100 - (100 / (1 + rs))
+
 
