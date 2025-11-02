@@ -19,11 +19,18 @@ def send_trade_email(message, subject="RH Bot Trade Alert"):
     msg["To"] = ALERT_TO
 
     try:
-        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
-            server.starttls()
-            server.login(SMTP_USER, SMTP_PASS)
-            server.send_message(msg)
-        print(f"[email sent] {message}")
+        if SMTP_PORT == 465:
+            import smtplib
+            with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT) as server:
+                server.login(SMTP_USER, SMTP_PASS)
+                server.send_message(msg)
+        else:
+            with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+                server.starttls()
+                server.login(SMTP_USER, SMTP_PASS)
+                server.send_message(msg)
+        print(f"[email sent] {subject}")
     except Exception as e:
         print(f"[email error] {e}")
+
 
