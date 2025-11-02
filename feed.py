@@ -12,7 +12,7 @@ def _fetch_coinbase(symbol):
 
 def _fetch_kraken(symbol):
     # Kraken uses "XDGUSD" for DOGE, "XBTUSD" for BTC, "ETHUSD" for ETH
-    mapping = {"DOGE-USD": "XDGUSD", "BTC-USD": "XBTUSD", "ETH-USD": "ETHUSD", "SHIB-USB": "SHIBUSD"}
+    mapping = {"DOGE-USD": "XDGUSD", "BTC-USD": "XBTUSD", "ETH-USD": "ETHUSD", "SHIB-USD": "SHIBUSD"}
     pair = mapping.get(symbol, symbol.replace("-", ""))
     url = f"https://api.kraken.com/0/public/Ticker?pair={pair}"
     r = requests.get(url, timeout=10)
@@ -78,6 +78,7 @@ def qty_from_usd(symbol: str, usd: float, side: str = "buy", decimals: int = 8) 
     qty = usd / price
     # round to something sane; many assets allow up to 8 decimals
     return round(qty, decimals)
+
 
 
 
