@@ -1,202 +1,173 @@
 # strategy.py
+from __future__ import annotations
 from collections import deque
+from dataclasses import dataclass
+from typing import Optional, Dict, Any
 
+# -------- Simple SMA crossover (utility / baseline) --------
 class SMAStrategy:
-    def __init__(self, short=5, long=20):
+    def __init__(self, short: int = 5, long: int = 20):
         if short >= long:
             raise ValueError("short must be < long")
         self.s = deque(maxlen=short)
         self.l = deque(maxlen=long)
+        self._prev_cross: Optional[int] = None  # -1 below, +1 above
 
-    def update(self, price: float):
-        self.s.append(price)
-        self.l.append(price)
+    def update(self, price: float) -> Optional[str]:
+        self.s.append(price); self.l.append(price)
         if len(self.l) < self.l.maxlen:
             return None
         sp = sum(self.s) / len(self.s)
         lp = sum(self.l) / len(self.l)
-        if sp > lp:
-            return "bull"
-        if sp < lp:
-            return "bear"
-        return None
-
-
-class PriceMoveStrategy:
-    def __init__(self, threshold=0.01):
-        self.threshold = threshold
-        self.last_price = None
-
-    def update(self, price: float):
-        if self.last_price is None:
-            self.last_price = price
+        cross = 1 if sp >= lp else -1
+        if self._prev_cross is None:
+            self._prev_cross = cross
             return None
-        change = price - self.last_price
-        if abs(change) >= self.threshold:
-            signal = "buy" if change > 0 else "sell"
-            self.last_price = price
-            return signal
-        return None
-
-class SwingStrategy:
-    """
-    Buys after a drop of >= threshold from the last high.
-    Sells after a rise of >= threshold from the last low.
-    """
-
-    def __init__(self, threshold=0.001):
-        self.threshold = threshold
-        self.last_high = None
-        self.last_low = None
-        self.position = 0  # 0=flat, 1=long
-
-    def update(self, price: float):
-        # Initialize anchors
-        if self.last_high is None:
-            self.last_high = price
-        if self.last_low is None:
-            self.last_low = price
-
         signal = None
-
-        if self.position == 0:
-            # looking for entry: buy when price falls from high
-            if self.last_high - price >= self.threshold:
-                signal = "buy"
-                self.position = 1
-                self.last_low = price   # reset low after buying
-        elif self.position == 1:
-            # looking for exit: sell when price rises from low
-            if price - self.last_low >= self.threshold:
-                signal = "sell"
-                self.position = 0
-                self.last_high = price  # reset high after selling
-
-        # Update anchors
-        if price > self.last_high:
-            self.last_high = price
-        if price < self.last_low:
-            self.last_low = price
-
-        return signal
-        
-class SwingWithTrend:
-    def __init__(self, buy_pct=0.5, sell_pct=0.5, trend_window=50,
-                 atr_window=14, atr_mult=1.0, rsi_window=14,
-                 max_buy_price=None, min_sell_price=None):
-        # thresholds now as percent
-        self.buy_pct = buy_pct / 100.0
-        self.sell_pct = sell_pct / 100.0
-
-        self.last_high = None
-        self.last_low = None
-        self.position = 0
-
-        self.trend_prices = []
-        self.trend_window = trend_window
-        self.prev_price = None
-
-        self.atr = ATR(window=atr_window)
-        self.atr_mult = atr_mult
-        self.rsi = RSI(window=rsi_window)
-
-        # hard price limits (coin-specific, loaded at startup)
-        self.max_buy_price = max_buy_price
-        self.min_sell_price = min_sell_price
-
-    def update(self, price: float):
-        # update trend SMA
-        self.trend_prices.append(price)
-        if len(self.trend_prices) > self.trend_window:
-            self.trend_prices.pop(0)
-        sma = sum(self.trend_prices) / len(self.trend_prices)
-
-        # update ATR
-        atr_val = self.atr.update(price, self.prev_price)
-        self.prev_price = price
-
-        # initialize anchors
-        if self.last_high is None: self.last_high = price
-        if self.last_low is None: self.last_low = price
-
-        signal = None
-        rsi_val = self.rsi.update(price)
-
-        # compute volatility-adjusted thresholds (hybrid)
-        base_buy  = self.last_high * self.buy_pct
-        base_sell = self.last_low  * self.sell_pct
-
-        if atr_val:
-            vol_factor = atr_val / price
-            dip_needed  = base_buy  * (1 + self.atr_mult * vol_factor)
-            rise_needed = base_sell * (1 + self.atr_mult * vol_factor)
-        else:
-            dip_needed, rise_needed = base_buy, base_sell
-
-        if self.position == 0:
-            # Buy: dipped enough, above SMA, RSI oversold, under hard limit
-            if (self.last_high - price >= dip_needed and price > sma and
-                (rsi_val is None or rsi_val < 50)):
-                if self.max_buy_price is None or price <= self.max_buy_price:
-                    signal = "buy"
-                    self.position = 1
-                    self.last_low = price
-
-        elif self.position == 1:
-            # Sell: rose enough, below SMA, RSI overbought, above hard limit
-            if (price - self.last_low >= rise_needed and price < sma and
-                (rsi_val is None or rsi_val > 50)):
-                if self.min_sell_price is None or price >= self.min_sell_price:
-                    signal = "sell"
-                    self.position = 0
-                    self.last_high = price
-
-        # update anchors
-        if price > self.last_high: self.last_high = price
-        if price < self.last_low: self.last_low = price
-
+        if self._prev_cross == -1 and cross == 1:
+            signal = "buy"
+        elif self._prev_cross == 1 and cross == -1:
+            signal = "sell"
+        self._prev_cross = cross
         return signal
 
-
-class ATR:
-    def __init__(self, window=14):
+# -------- RSI (Wilder) --------
+class RSICalc:
+    def __init__(self, window: int = 14):
+        if window <= 0:
+            raise ValueError("window must be > 0")
         self.window = window
-        self.tr = []
+        self.prev: Optional[float] = None
+        self.gains: deque = deque()
+        self.losses: deque = deque()
 
-    def update(self, price, prev_price):
-        if prev_price is None:
+    def update(self, price: float) -> Optional[float]:
+        if self.prev is None:
+            self.prev = price
             return None
-        tr = abs(price - prev_price)
-        self.tr.append(tr)
-        if len(self.tr) > self.window:
-            self.tr.pop(0)
-        return sum(self.tr) / len(self.tr) if self.tr else None
-        
-class RSI:
-    def __init__(self, window=14):
-        self.window = window
-        self.gains = []
-        self.losses = []
-        self.prev_price = None
-
-    def update(self, price):
-        if self.prev_price is None:
-            self.prev_price = price
-            return None
-        delta = price - self.prev_price
-        self.prev_price = price
-        self.gains.append(max(delta, 0))
-        self.losses.append(abs(min(delta, 0)))
+        delta = price - self.prev
+        self.prev = price
+        self.gains.append(max(delta, 0.0))
+        self.losses.append(abs(min(delta, 0.0)))
         if len(self.gains) > self.window:
-            self.gains.pop(0)
-            self.losses.pop(0)
+            self.gains.popleft(); self.losses.popleft()
         if len(self.gains) < self.window:
             return None
         avg_gain = sum(self.gains) / self.window
         avg_loss = sum(self.losses) / self.window
         if avg_loss == 0:
-            return 100
+            return 100.0
         rs = avg_gain / avg_loss
-        return 100 - (100 / (1 + rs))
+        return 100.0 - (100.0 / (1.0 + rs))
 
+# -------- ATR proxy (close-to-close) --------
+class ATRLite:
+    """
+    Simplified ATR proxy using |close_t - close_(t-1)| averaged over N.
+    Not a full true-range, but good enough for a volatility gate.
+    """
+    def __init__(self, window: int = 14):
+        if window <= 0:
+            raise ValueError("window must be > 0")
+        self.window = window
+        self.prev: Optional[float] = None
+        self.moves: deque = deque(maxlen=window)
 
+    def update(self, price: float) -> Optional[float]:
+        if self.prev is None:
+            self.prev = price
+            return None
+        self.moves.append(abs(price - self.prev))
+        self.prev = price
+        if len(self.moves) < self.window:
+            return None
+        return sum(self.moves) / len(self.moves)
+
+# -------- Swing-with-Trend --------
+@dataclass
+class SwingConfig:
+    buy_pct: float        # e.g., 2 => buy when price <= SMA * (1 - 0.02)
+    sell_pct: float       # e.g., 4 => sell when price >= SMA * (1 + 0.04)
+    trend_window: int     # SMA window for trend anchor
+    rsi_window: int = 14
+    atr_window: int = 14
+    enable_rsi: bool = True
+    enable_atr: bool = True
+    rsi_buy: float = 35.0
+    rsi_sell: float = 65.0
+    atr_cap_pct: float = 5.0     # trade disabled if ATR% > this (percent of price)
+    threshold_abs: float = 0.0   # ignore ticks smaller than this absolute change
+    trail_pct: Optional[float] = None  # track high-water and block sells below (percent drop)
+
+class SwingWithTrend:
+    """
+    Mean-reversion around a trend SMA, gated by RSI and ATR (both optional).
+    Emits dicts like: {"signal":"buy","reason":"below_band","sma":..., "rsi":..., "atr_pct":..., "dev_pct":...}
+    """
+    def __init__(self, cfg: SwingConfig):
+        if cfg.trend_window <= 1:
+            raise ValueError("trend_window must be > 1")
+        self.cfg = cfg
+        self.prices = deque(maxlen=cfg.trend_window)
+        self.rsi = RSICalc(cfg.rsi_window) if cfg.enable_rsi else None
+        self.atr = ATRLite(cfg.atr_window) if cfg.enable_atr else None
+        self.prev_price: Optional[float] = None
+        self.high_water: Optional[float] = None  # for optional trailing logic
+
+    def _trend_sma(self) -> Optional[float]:
+        if len(self.prices) < self.prices.maxlen:
+            return None
+        return sum(self.prices) / len(self.prices)
+
+    def update(self, price: float) -> Optional[Dict[str, Any]]:
+        # threshold filter on raw ticks
+        if self.prev_price is not None and self.cfg.threshold_abs > 0:
+            if abs(price - self.prev_price) < self.cfg.threshold_abs:
+                return None
+        self.prev_price = price
+
+        self.prices.append(price)
+        sma = self._trend_sma()
+        if sma is None or sma <= 0:
+            # Warm-up
+            if self.rsi: self.rsi.update(price)
+            if self.atr: self.atr.update(price)
+            return None
+
+        # deviation from SMA in percent
+        dev_pct = (price / sma - 1.0) * 100.0
+
+        # optional RSI/ATR gates
+        rsi_val = self.rsi.update(price) if self.rsi else None
+        atr_val = self.atr.update(price) if self.atr else None
+        atr_pct = (atr_val / price * 100.0) if (atr_val is not None and price > 0) else None
+
+        if self.cfg.enable_atr and (atr_pct is None or atr_pct > self.cfg.atr_cap_pct):
+            return None  # too volatile (or not enough ATR yet)
+
+        # Trailing high-water (sell guard), if configured
+        if self.cfg.trail_pct is not None:
+            if self.high_water is None or price > self.high_water:
+                self.high_water = price
+            # If price drops more than trail_pct from high_water, prefer sell
+            if self.high_water and price <= self.high_water * (1.0 - self.cfg.trail_pct / 100.0):
+                return {"signal": "sell", "reason": "trail_stop", "sma": sma, "rsi": rsi_val, "atr_pct": atr_pct, "dev_pct": dev_pct}
+
+        # Core swing logic around SMA bands
+        want_buy = dev_pct <= -float(self.cfg.buy_pct)
+        want_sell = dev_pct >=  float(self.cfg.sell_pct)
+
+        # Apply RSI gates if enabled
+        if self.cfg.enable_rsi and rsi_val is not None:
+            if want_buy and not (rsi_val <= self.cfg.rsi_buy):
+                want_buy = False
+            if want_sell and not (rsi_val >= self.cfg.rsi_sell):
+                want_sell = False
+
+        # Prefer sell over buy if both somehow true
+        if want_sell:
+            return {"signal": "sell", "reason": "above_band", "sma": sma, "rsi": rsi_val, "atr_pct": atr_pct, "dev_pct": dev_pct}
+        if want_buy:
+            return {"signal": "buy", "reason": "below_band", "sma": sma, "rsi": rsi_val, "atr_pct": atr_pct, "dev_pct": dev_pct}
+
+        return None
