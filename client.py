@@ -56,6 +56,10 @@ class RH:
             raise RuntimeError(f"HTTP {r.status_code}: {r.text}") from e
         return r.json() if r.content else {}
 
+    def get_order(self, order_id: str):
+        # order_id usually comes back in the POST response
+        return self._req("GET", f"{ORDERS}{order_id}/", None)
+        
     # ---- public methods ----
     def list_orders(self):
         return self._req("GET", ORDERS, None)   # signed GET with empty body
@@ -79,6 +83,7 @@ class RH:
         else:
             body["market_order_config"]["usd_notional"] = str(usd_notional)
         return self._req("POST", ORDERS, body)
+
 
 
 
