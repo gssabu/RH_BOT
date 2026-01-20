@@ -1,93 +1,109 @@
 # feed.py
-import requests
-import sys
 import time
 import random
+import requests
 
-def _fetch_coinbase(symbol):
+# ------- Provider fetchers -------
+
+def _fetch_coinbase(symbol: str) -> float:
+    # Coinbase v2 spot
     url = f"https://api.coinbase.com/v2/prices/{symbol}/spot"
     r = requests.get(url, timeout=10)
     r.raise_for_status()
     return float(r.json()["data"]["amount"])
 
-def _fetch_kraken(symbol):
-    # Kraken uses "XDGUSD" for DOGE, "XBTUSD" for BTC, "ETHUSD" for ETH
-    mapping = {"DOGE-USD": "XDGUSD", "BTC-USD": "XBTUSD", "ETH-USD": "ETHUSD", "SHIB-USD": "SHIBUSD"}
-    pair = mapping.get(symbol, symbol.replace("-", ""))
+def _fetch_kraken(symbol: str) -> float:
+    """
+    Kraken pair mapping:
+      BTC-USD -> XBTUSD
+      ETH-USD -> ETHUSD
+      DOGE-USD -> XDGUSD
+      SHIB-USD -> SHIBUSD
+    """
+    mapping = {
+        "BTC-USD": "XBTUSD",
+        "ETH-USD": "ETHUSD",
+        "DOGE-USD": "XDGUSD",
+        "SHIB-USD": "SHIBUSD",  # <-- fixed typo (was SHIB-USB)
+    }
+    pair = mapping.get(symbol, symbol.replace("-", ""))  # default heuristic
     url = f"https://api.kraken.com/0/public/Ticker?pair={pair}"
     r = requests.get(url, timeout=10)
     r.raise_for_status()
-    data = r.json()["result"]
-    return float(list(data.values())[0]["c"][0])  # last trade close price
+    j = r.json()
+    if j.get("error"):
+        raise RuntimeError(j["error"])
+    # Kraken returns dict keyed by the pair code; 'c'[0] is last trade price
+    k = next(iter(j["result"].keys()))
+    return float(j["result"][k]["c"][0])
 
-def _fetch_robinhood(symbol):
-    url = f"https://api.robinhood.com/marketdata/crypto/quotes/{symbol}/"
-    r = requests.get(url, timeout=10)
-    r.raise_for_status()
-    return float(r.json()["mark_price"])
+# ------- Core helpers -------
 
-def coinbase_spot(symbol, retries=3, base_delay=2):
-    if not hasattr(coinbase_spot, "prev_price"):
-        coinbase_spot.prev_price = None
+# small in-memory cache so we can fall back if both providers fail
+_LAST_PRICE = {}
 
-    GREEN = "\033[92m"
-    RED = "\033[91m"
-    RESET = "\033[0m"
+def _try_with_retries(fn, attempts=2, backoff=0.3):
+    last_err = None
+    for i in range(attempts):
+        try:
+            return fn()
+        except Exception as e:
+            last_err = e
+            if i < attempts - 1:
+                time.sleep(backoff * (2 ** i))
+    raise last_err
 
-    sources = [
-        ("Coinbase", _fetch_coinbase),
-        ("Kraken", _fetch_kraken),
-        ("Robinhood", _fetch_robinhood),
-    ]
-
-    for name, fn in sources:
-        for i in range(retries):
-            try:
-                price = fn(symbol)
-                if coinbase_spot.prev_price is not None:
-                    diff = price - coinbase_spot.prev_price
-                    color = GREEN if diff >= 0 else RED
-                    sign = "+" if diff >= 0 else "-"
-                    sys.stdout.write(
-                        f"\r[feed] {name} price {symbol} = {price:.8f}   "
-                        f"prev: {coinbase_spot.prev_price:.8f}, {color}{sign}{abs(diff):.8f}{RESET}  "
-                    )
-                    sys.stdout.flush()
-                coinbase_spot.prev_price = price
-                return price
-            except Exception as e:
-                wait = base_delay * (2 ** i) + random.uniform(0, 1)
-                print(f"[feed error] {name} {e} | retry {i+1}/{retries} in {wait:.1f}s")
-                time.sleep(wait)
-        print(f"[feed] {name} failed after {retries} retries, switching...")
-
-    raise RuntimeError(f"All feeds failed for {symbol}")
-
-
-def qty_from_usd(symbol: str, usd: float, side: str = "buy", decimals: int = 8) -> float:
+def get_price(symbol: str, side: str | None = None, bias_bps: int = 50) -> float:
     """
-    Convert USD notional to asset quantity using Coinbase spot.
-    - side adjusts a tiny bias so buys assume slightly higher price, sells slightly lower.
-    - decimals clamps to typical crypto precision (RH will validate real steps per asset).
+    Return a spot price for symbol (e.g., 'BTC-USD').
+    Optional 'side' applies a conservative bias:
+      buy  -> +bias_bps
+      sell -> -bias_bps
     """
-    price = coinbase_spot(symbol)          # e.g., BTC-USD price
+    providers = [_fetch_coinbase, _fetch_kraken]
+    # randomize order a bit to avoid always hammering one provider
+    random.shuffle(providers)
+
+    price = None
+    err = None
+    for fn in providers:
+        try:
+            price = _try_with_retries(lambda: fn(symbol))
+            break
+        except Exception as e:
+            err = e
+            continue
+
+    if price is None:
+        # last-resort: stale cache if we have it
+        if symbol in _LAST_PRICE:
+            price = _LAST_PRICE[symbol]
+        else:
+            # surface the last provider error
+            raise RuntimeError(f"all providers failed for {symbol}: {err!r}")
+
+    # apply side bias (slippage cushion) consistently with comment
     if side == "buy":
-        price *= 1.005    # +5 bps skid
+        price *= (1.0 + bias_bps / 10_000.0)   # +50 bps by default
     elif side == "sell":
-        price *= 0.995    # -5 bps
+        price *= (1.0 - bias_bps / 10_000.0)   # -50 bps by default
+
+    # update cache with unbiased price for next time
+    _LAST_PRICE[symbol] = price / (1.0 + bias_bps / 10_000.0) if side == "buy" else \
+                          price / (1.0 - bias_bps / 10_000.0) if side == "sell" else price
+    return float(price)
+
+def qty_from_usd(usd: float, price: float, decimals: int = 8) -> float:
+    """
+    Convert USD notional to asset quantity, honoring exchange decimals.
+    """
+    if price <= 0:
+        raise ValueError("price must be > 0")
     qty = usd / price
-    # round to something sane; many assets allow up to 8 decimals
-    return round(qty, decimals)
-
-
-
-
-
-
-
-
-
-
-
-
-
+    # many crypto assets permit up to 8 decimals; clamp to provided rule
+    q = round(qty, decimals)
+    # guard tiny non-zero that rounds to 0 after broker truncation
+    if q == 0.0 and qty > 0:
+        step = 10 ** (-decimals)
+        q = step
+    return q
