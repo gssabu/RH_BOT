@@ -12,15 +12,14 @@ SMTP_PORT = int(os.getenv("SMTP_PORT", "465"))
 ALERT_FROM = os.getenv("ALERT_FROM")
 ALERT_TO = os.getenv("ALERT_TO")
 
-def send_trade_email(message, subject="RH Bot Trade Alert"):
+def send_trade_email(message, subject=message):
     msg = MIMEText(message)
-    msg["Subject"] = message
+    msg["Subject"] = subject
     msg["From"] = ALERT_FROM
     msg["To"] = ALERT_TO
 
     try:
         if SMTP_PORT == 465:
-            import smtplib
             with smtplib.SMTP_SSL(SMTP_SERVER, SMTP_PORT) as server:
                 server.login(SMTP_USER, SMTP_PASS)
                 server.send_message(msg)
@@ -32,5 +31,6 @@ def send_trade_email(message, subject="RH Bot Trade Alert"):
         print(f"[email sent] {subject}")
     except Exception as e:
         print(f"[email error] {e}")
+
 
 
