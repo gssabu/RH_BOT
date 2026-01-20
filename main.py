@@ -165,7 +165,31 @@ def cmd_sma_bot(a):
     except KeyboardInterrupt:
         fname = account.export_csv()
         print(f"\nStopped. Trade history saved to {fname}")
+        
+def append_live_csv(path: str, row: dict):
+    keys = ["ts","symbol","side","qty","price","notional","order_id","state","note"]
+    new_file = not os.path.exists(path) or os.path.getsize(path) == 0
+    with open(path, "a", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=keys)
+        if new_file:
+            w.writeheader()
+        w.writerow({k: row.get(k) for k in keys})
+        f.flush()
+        os.fsync(f.fileno())
 
+def wait_for_fill(rh: RH, order_id: str, timeout=45, poll=1.0):
+    t0 = time.time()
+    last = None
+    while time.time() - t0 < timeout:
+        od = rh.get_order(order_id)
+        last = od
+        state = str(od.get("state") or od.get("status") or "").lower()
+        if state in ("filled", "completed"):
+            return od
+        if state in ("canceled", "rejected", "failed", "error"):
+            return od
+        time.sleep(poll)
+    return last
 
 def build():
     p = argparse.ArgumentParser("rhbot")
@@ -207,6 +231,7 @@ def build():
 if __name__ == "__main__":
     args = build().parse_args()
     args.func(args)
+
 
 
 
