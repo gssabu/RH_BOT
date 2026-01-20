@@ -17,6 +17,9 @@ ASSET_RULES = {
     "SHIB-USD": {"decimals": 9, "min_usd": 0.05},
 }
 
+def _fmt(x, nd=8):
+    return f"{x:.{nd}f}" if isinstance(x, (int, float)) else "None"
+
 def load_limits(path="limits.json"):
     if not os.path.exists(path):
         return {}
@@ -64,14 +67,16 @@ def cmd_sma_bot(a):
             atr_window=a.atr_window,
             rsi_window=a.rsi_window,
             trend_window=a.trend,
-            max_buy_price=coin_limits.get("max_buy_price"),
-            min_sell_price=coin_limits.get("min_sell_price")
+            mb = coin_limits.get("max_buy_price")
+            ms = coin_limits.get("min_sell_price")
         )
 
-        print(f"Running Swing-with-Trend strategy: Buy%={a.buy_pct} Sell%={a.sell_pct} "
-              f"trend_window={a.trend} "
-              f"max_buy_price={coin_limits.get('max_buy_price'):.8f} "
-              f"min_sell_price={coin_limits.get('min_sell_price'):.8f}")
+        print(
+            f"Running Swing-with-Trend strategy: "
+            f"Buy%={a.buy_pct} Sell%={a.sell_pct} trend_window={a.trend} "
+            f"max_buy_price={_fmt(mb)} min_sell_price={_fmt(ms)}"
+        )
+        
     else:
         strat = PriceMoveStrategy(threshold=a.threshold)
         print(f"Running PriceMove strategy: threshold={a.threshold}")
@@ -206,6 +211,7 @@ def build():
 if __name__ == "__main__":
     args = build().parse_args()
     args.func(args)
+
 
 
 
