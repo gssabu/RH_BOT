@@ -39,7 +39,7 @@ def cmd_market_order(a):
     rh = RH()
     if a.notional is not None:
         dec = ASSET_RULES.get(a.symbol, {}).get("decimals", 8)
-        qty = qty_from_usd(a.symbol, a.notional, side=a.side, decimals=dec)
+        qty = qty_from_usd(trade_usd, p, decimals=dec)
         res = rh.market_order(a.symbol, a.side, quantity=qty)  # send quantity
     else:
         res = rh.market_order(a.symbol, a.side, quantity=a.quantity)
@@ -144,7 +144,7 @@ def cmd_sma_bot(a):
                     print("blocked buy:", why)
                 else:
                     trade_usd = max(a.notional, min_usd)
-                    qty = qty_from_usd(symbol, trade_usd, side="buy", decimals=dec)
+                    qty = qty_from_usd(trade_usd, p, decimals=dec)
                     if a.live:
                         out = rh.market_order(symbol, "buy", quantity=qty)
                         print(out)
@@ -224,6 +224,7 @@ def build():
 if __name__ == "__main__":
     args = build().parse_args()
     args.func(args)
+
 
 
 
