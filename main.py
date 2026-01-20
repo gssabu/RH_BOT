@@ -2,7 +2,7 @@
 import argparse, json, time, os
 from client import RH
 from feed import coinbase_spot, qty_from_usd
-from strategy import SMAStrategy, PriceMoveStrategy, SwingStrategy, SwingWithTrend, SwingConfig
+from strategy import SwingWithTrend, SwingConfig
 from risk import Risk
 from paper_account import PaperAccount
 import datetime
@@ -231,6 +231,7 @@ def build():
 if __name__ == "__main__":
     args = build().parse_args()
     args.func(args)
+
 
 
 
