@@ -41,7 +41,7 @@ class RH:
         hdr = self._headers(method, path, body)
         if self.dry and method.upper()=="POST":
             redacted = {**hdr, "x-api-key":"***", "x-signature":"***"}
-            return {"dry_run": True, "url": url, "headers": hdr, "body": body}
+            return {"dry_run": True, ..., "headers": hdr, ...}
         payload = _canon(body) if body is not None else None
         r = requests.request(
             method.upper(),
@@ -79,4 +79,5 @@ class RH:
         else:
             body["market_order_config"]["usd_notional"] = str(usd_notional)
         return self._req("POST", ORDERS, body)
+
 
