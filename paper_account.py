@@ -38,6 +38,9 @@ class PaperAccount:
     def _pos(self, symbol: str) -> Position:
         return self.positions.setdefault(symbol, Position())
 
+    def qty_held(self, symbol: str) -> float:
+    return self.positions.get(symbol, Position()).qty
+
     # --- public API ---
     def buy(self, symbol: str, qty: float, price: float) -> bool:
         if qty <= 0 or price <= 0:
@@ -126,3 +129,4 @@ class PaperAccount:
             cash_after=round(self.usd, 8),
         )
         self.history.append(asdict(rec))
+
