@@ -2,12 +2,29 @@
 import argparse, json, time, os
 from client import RH
 from feed import coinbase_spot, qty_from_usd
-from strategy import SMAStrategy, PriceMoveStrategy, SwingStrategy, SwingWithTrend
+from strategy import SMAStrategy, PriceMoveStrategy, SwingStrategy, SwingWithTrend, SwingConfig
 from risk import Risk
 from paper_account import PaperAccount
 import datetime
 from alerts import send_trade_email
 
+
+cfg = SwingConfig(
+    buy_pct=float(args.buy_pct),
+    sell_pct=float(args.sell_pct),
+    trend_window=int(args.trend),
+    rsi_window=int(getattr(args, "period", 14)),
+    atr_window=int(getattr(args, "period", 14)),
+    enable_rsi=not bool(getattr(args, "no_rsi", False)),
+    enable_atr=not bool(getattr(args, "no_atr", False)),
+    rsi_buy=35.0,          # tweak if you want
+    rsi_sell=65.0,         # tweak if you want
+    atr_cap_pct=5.0,       # or per-asset from limits
+    threshold_abs=float(getattr(args, "threshold", 0.0)),
+    trail_pct=float(getattr(args, "trail", 0.0)) if args.trail else None,
+)
+
+a = SwingWithTrend(cfg)
 
 # Per-symbol precision + min USD (tweak if RH rejects sizes)
 ASSET_RULES = {
@@ -214,6 +231,7 @@ def build():
 if __name__ == "__main__":
     args = build().parse_args()
     args.func(args)
+
 
 
 
