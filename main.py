@@ -68,17 +68,17 @@ def cmd_sma_bot(a):
             rsi_window=a.rsi_window,
             trend_window=a.trend,
             coin_limits = limits.get(args.symbol, {}) if 'limits' in globals() else {},
-            mb = coin_limits.get("max_buy_price"),
-            ms = coin_limits.get("min_sell_price")
-        
+            max_buy_price=coin_limits.get("max_buy_price"),
+            min_sell_price=coin_limits.get("min_sell_price")
         )
+
         print(
             "Running Swing-with-Trend strategy: "
             f"Buy%={a.buy_pct} "
             f"Sell%={a.sell_pct} "
             f"trend_window={a.trend} "
-            f"max_buy_price={_fmt(mb)} "
-            f"min_sell_price={_fmt(ms)}"
+            f"max_buy_price={_fmt(max_buy_price)} "
+            f"min_sell_price={_fmt(min_sell_price)}"
         )
         
     else:
@@ -215,6 +215,7 @@ def build():
 if __name__ == "__main__":
     args = build().parse_args()
     args.func(args)
+
 
 
 
