@@ -129,7 +129,7 @@ class PaperAccount:
         if not path:
             return
     
-        keys = ["ts","symbol","side","qty","price","fee","notional","realized_pnl","cash_after"]
+        keys = ["TS","SYMBOL","SIDE","QTY","PRICE","FEE","NOTIONAL","REALIZED_PNL","BALANCE"]
         #f.write(", ".join(k.upper() for k in keys) + "\n")
         new_file = not os.path.exists(path) or os.path.getsize(path) == 0
     
@@ -143,7 +143,7 @@ class PaperAccount:
     
     def export_csv(self, path: str = "paper_trades.csv"):
         # full export (handy), but the important part is _append_csv_row per trade
-        keys = ["TS","symbol","side","qty","price","fee","notional","realized_pnl","cash_after"]
+        keys = ["TS","SYMBOL","SIDE","QTY","PRICE","FEE","NOTIONAL","REALIZED_PNL","BALANCE"]
         #f.write(", ".join(k.upper() for k in keys) + "\n")
         tmp = path + ".tmp"
         with open(tmp, "w", newline="") as f:
@@ -164,13 +164,14 @@ class PaperAccount:
             side=side,
             qty=round(qty, 12),
             price=round(price, 12),
-            fee=round(fee, 8),
-            notional=round(notional, 8),
-            realized_pnl=round(realized, 8),
-            cash_after=round(self.usd, 8),
+            fee=round(fee, 3),
+            notional=round(notional, 3),
+            realized_pnl=round(realized, 3),
+            cash_after=round(self.usd, 2),
         )
         self.history.append(asdict(rec))
         self._append_csv_row(asdict(rec))
+
 
 
 
