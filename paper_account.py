@@ -130,6 +130,7 @@ class PaperAccount:
             return
     
         keys = ["ts","symbol","side","qty","price","fee","notional","realized_pnl","cash_after"]
+        f.write(", ".join(k.upper() for k in keys) + "\n")
         new_file = not os.path.exists(path) or os.path.getsize(path) == 0
     
         with open(path, "a", newline="") as f:
@@ -143,6 +144,7 @@ class PaperAccount:
     def export_csv(self, path: str = "paper_trades.csv"):
         # full export (handy), but the important part is _append_csv_row per trade
         keys = ["ts","symbol","side","qty","price","fee","notional","realized_pnl","cash_after"]
+        f.write(", ".join(k.upper() for k in keys) + "\n")
         tmp = path + ".tmp"
         with open(tmp, "w", newline="") as f:
             w = csv.DictWriter(f, fieldnames=keys)
@@ -169,6 +171,7 @@ class PaperAccount:
         )
         self.history.append(asdict(rec))
         self._append_csv_row(asdict(rec))
+
 
 
 
