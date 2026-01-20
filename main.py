@@ -76,8 +76,8 @@ def cmd_sma_bot(a):
             f"Buy%={a.buy_pct} "
             f"Sell%={a.sell_pct} "
             f"trend_window={a.trend} "
-            f"max_buy_price={_fmt(max_buy_price)} "
-            f"min_sell_price={_fmt(min_sell_price)}"
+            f"max_buy_price={_fmt('max_buy_price')} "
+            f"min_sell_price={_fmt('min_sell_price')}"
         )
         
     else:
@@ -214,6 +214,7 @@ def build():
 if __name__ == "__main__":
     args = build().parse_args()
     args.func(args)
+
 
 
 
