@@ -64,6 +64,7 @@ def cmd_list(_):
 def cmd_market_order(a):
     rh = RH()
     if a.notional is not None:
+        p = coinbase_spot(a.symbol)
         dec = ASSET_RULES.get(a.symbol, {}).get("decimals", 8)
         qty = qty_from_usd(trade_usd, p, decimals=dec)
         res = rh.market_order(a.symbol, a.side, quantity=qty)  # send quantity
@@ -202,7 +203,9 @@ def cmd_sma_bot(a):
 
             elif sig in ("bear", "sell") and position == 1:
                 trade_usd = max(a.notional, min_usd)
-                qty = min(account.asset, qty_from_usd(symbol, trade_usd, side="sell", decimals=dec))
+                held = account.positions.get(symbol).qty if symbol in account.positions else 0.0
+                target_qty = qty_from_usd(trade_usd, p, decimals=dec)
+                qty = min(held, target_qty)
                 if a.live:
                     qty = held_qty  # sell what you actually bought
                 
@@ -244,8 +247,10 @@ def cmd_sma_bot(a):
                         print(trade_msg)
                     
                 else:
+                    trade_usd = max(a.notional, min_usd)
                     held = account.positions[symbol].qty if symbol in account.positions else 0.0
-                    qty = min(held, qty_from_usd(symbol, trade_usd, side="sell", decimals=dec))
+                    target_qty = qty_from_usd(trade_usd, p, decimals=dec)
+                    qty = min(held, target_qty)
                     account.sell(symbol, qty, p)
                     print(f"\n(paper) SELL {symbol} qty={qty} @ {p:.8f}")
                     trade_msg = f"SELL {symbol} qty={qty} @ {p:.8f}"                   
@@ -299,6 +304,7 @@ def build():
 if __name__ == "__main__":
     args = build().parse_args()
     args.func(args)
+
 
 
 
