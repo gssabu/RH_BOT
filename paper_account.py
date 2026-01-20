@@ -1,4 +1,6 @@
 # paper_account.py
+import os
+import csv
 from __future__ import annotations
 from dataclasses import dataclass, asdict
 from typing import Dict, List
@@ -80,7 +82,7 @@ class PaperAccount:
         proceeds = notional - fee
 
         # realized PnL uses avg_cost that includes buy fees
-        realized = (price - p.avg_cost) * qty - 0.0  # sell-fee already subtracted via proceeds
+        realized = (price - p.avg_cost) * qty - fee
         self.realized_pnl_total += realized
         if realized >= 0:
             self.wins += 1
@@ -115,6 +117,43 @@ class PaperAccount:
             "positions": {k: asdict(v) for k, v in self.positions.items()},
         }
 
+    def qty_held(self, symbol: str) -> float:
+        p = self.positions.get(symbol)
+        return 0.0 if p is None else float(p.qty)
+    
+    def set_csv(self, path: str):
+        self.csv_path = path
+    
+    def _append_csv_row(self, row: dict):
+        path = getattr(self, "csv_path", None)
+        if not path:
+            return
+    
+        keys = ["ts","symbol","side","qty","price","fee","notional","realized_pnl","cash_after"]
+        new_file = not os.path.exists(path) or os.path.getsize(path) == 0
+    
+        with open(path, "a", newline="") as f:
+            w = csv.DictWriter(f, fieldnames=keys)
+            if new_file:
+                w.writeheader()
+            w.writerow({k: row.get(k) for k in keys})
+            f.flush()
+            os.fsync(f.fileno())
+    
+    def export_csv(self, path: str = "paper_trades.csv"):
+        # full export (handy), but the important part is _append_csv_row per trade
+        keys = ["ts","symbol","side","qty","price","fee","notional","realized_pnl","cash_after"]
+        tmp = path + ".tmp"
+        with open(tmp, "w", newline="") as f:
+            w = csv.DictWriter(f, fieldnames=keys)
+            w.writeheader()
+            for row in self.history:
+                w.writerow({k: row.get(k) for k in keys})
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp, path)
+        return path
+
     # --- internals ---
     def _record(self, symbol, side, qty, price, fee, notional, realized):
         rec = Fill(
@@ -129,5 +168,7 @@ class PaperAccount:
             cash_after=round(self.usd, 8),
         )
         self.history.append(asdict(rec))
+        self._append_csv_row(asdict(rec))
+
 
 
