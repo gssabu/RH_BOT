@@ -7,6 +7,7 @@ from risk import Risk
 from paper_account import PaperAccount
 import datetime
 from alerts import send_trade_email
+import csv
 
 
 # Per-symbol precision + min USD (tweak if RH rejects sizes)
@@ -16,6 +17,31 @@ ASSET_RULES = {
     "DOGE-USD": {"decimals": 2, "min_usd": 0.15},
     "SHIB-USD": {"decimals": 9, "min_usd": 0.05},
 }
+
+def append_live_csv(path: str, row: dict):
+    keys = ["ts","symbol","side","qty","price","notional","order_id","state","note"]
+    new_file = not os.path.exists(path) or os.path.getsize(path) == 0
+    with open(path, "a", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=keys)
+        if new_file:
+            w.writeheader()
+        w.writerow({k: row.get(k) for k in keys})
+        f.flush()
+        os.fsync(f.fileno())
+
+def wait_for_fill(rh: RH, order_id: str, timeout=45, poll=1.0):
+    t0 = time.time()
+    last = None
+    while time.time() - t0 < timeout:
+        od = rh.get_order(order_id)
+        last = od
+        state = str(od.get("state") or od.get("status") or "").lower()
+        if state in ("filled", "completed"):
+            return od
+        if state in ("canceled", "rejected", "failed", "error"):
+            return od
+        time.sleep(poll)
+    return last
 
 def _fmt(x, nd=8):
     return f"{x:.{nd}f}" if isinstance(x, (int, float)) else "None"
@@ -119,7 +145,8 @@ def cmd_sma_bot(a):
                 continue
 
             sig = strat.update(p)
-
+            if isinstance(sig, dict):
+                sig = sig.get("signal")
             # entry/exit
             if sig in ("bull", "buy") and position == 0:
                 ok, why = risk.allow(a.notional)
@@ -130,11 +157,41 @@ def cmd_sma_bot(a):
                     qty = qty_from_usd(trade_usd, p, decimals=dec)
                     if a.live:
                         out = rh.market_order(symbol, "buy", quantity=qty)
-                        print(out)
-                        trade_msg = f"\nBUY {symbol} qty={qty} @ {p:.8f}"
+                        order_id = out.get("id") or out.get("order_id")
+                    
+                        filled = wait_for_fill(rh, order_id) if order_id else out
+                        state = (filled.get("state") or filled.get("status") or "unknown")
+                    
+                        filled_qty = (
+                            filled.get("filled_asset_quantity")
+                            or filled.get("executed_quantity")
+                            or filled.get("asset_quantity")
+                            or qty
+                        )
+                        avg_price = filled.get("average_price") or filled.get("price") or p
+                    
+                        row = {
+                            "ts": time.time(),
+                            "symbol": symbol,
+                            "side": "buy",
+                            "qty": float(filled_qty) if filled_qty is not None else None,
+                            "price": float(avg_price) if avg_price is not None else None,
+                            "notional": (float(filled_qty) * float(avg_price)) if filled_qty and avg_price else None,
+                            "order_id": order_id,
+                            "state": state,
+                            "note": "",
+                        }
+                    
+                        if str(state).lower() in ("filled", "completed"):
+                            append_live_csv("live_trades.csv", row)
+                            held_qty = float(filled_qty)
+                            position, entry, peak = 1, avg_price, avg_price
+                    
+                        trade_msg = f"BUY {symbol} qty={qty} @ {p:.8f} state={state}"
                         print(trade_msg)
-                        #send_trade_email(trade_msg)
+                        # send_trade_email(trade_msg)
                         risk.record(trade_usd)
+                                            
                     else:
                         account.buy(symbol, qty, p)
                         print(f"\n(paper) BUY {symbol} qty={qty} @ {p:.8f}")
@@ -147,10 +204,45 @@ def cmd_sma_bot(a):
                 trade_usd = max(a.notional, min_usd)
                 qty = min(account.asset, qty_from_usd(symbol, trade_usd, side="sell", decimals=dec))
                 if a.live:
-                    out = rh.market_order(symbol, "sell", quantity=qty)
-                    trade_msg = f"\nSELL {symbol} qty={qty} @ {p:.8f}"
-                    #send_trade_email(trade_msg)
-                    print(out)
+                    qty = held_qty  # sell what you actually bought
+                
+                    if qty <= 0:
+                        print("Live SELL blocked: held_qty is 0")
+                    else:
+                        out = rh.market_order(symbol, "sell", quantity=qty)
+                        order_id = out.get("id") or out.get("order_id")
+                
+                        filled = wait_for_fill(rh, order_id) if order_id else out
+                        state = (filled.get("state") or filled.get("status") or "unknown")
+                
+                        filled_qty = (
+                            filled.get("filled_asset_quantity")
+                            or filled.get("executed_quantity")
+                            or filled.get("asset_quantity")
+                            or qty
+                        )
+                        avg_price = filled.get("average_price") or filled.get("price") or p
+                
+                        row = {
+                            "ts": time.time(),
+                            "symbol": symbol,
+                            "side": "sell",
+                            "qty": float(filled_qty) if filled_qty is not None else None,
+                            "price": float(avg_price) if avg_price is not None else None,
+                            "notional": (float(filled_qty) * float(avg_price)) if filled_qty and avg_price else None,
+                            "order_id": order_id,
+                            "state": state,
+                            "note": "",
+                        }
+                
+                        if str(state).lower() in ("filled", "completed"):
+                            append_live_csv("live_trades.csv", row)
+                            held_qty = 0.0
+                            position, entry, peak = 0, None, None
+                
+                        trade_msg = f"SELL {symbol} qty={qty} @ {p:.8f} state={state}"
+                        print(trade_msg)
+                    
                 else:
                     held = account.positions[symbol].qty if symbol in account.positions else 0.0
                     qty = min(held, qty_from_usd(symbol, trade_usd, side="sell", decimals=dec))
@@ -166,30 +258,6 @@ def cmd_sma_bot(a):
         fname = account.export_csv()
         print(f"\nStopped. Trade history saved to {fname}")
         
-def append_live_csv(path: str, row: dict):
-    keys = ["ts","symbol","side","qty","price","notional","order_id","state","note"]
-    new_file = not os.path.exists(path) or os.path.getsize(path) == 0
-    with open(path, "a", newline="") as f:
-        w = csv.DictWriter(f, fieldnames=keys)
-        if new_file:
-            w.writeheader()
-        w.writerow({k: row.get(k) for k in keys})
-        f.flush()
-        os.fsync(f.fileno())
-
-def wait_for_fill(rh: RH, order_id: str, timeout=45, poll=1.0):
-    t0 = time.time()
-    last = None
-    while time.time() - t0 < timeout:
-        od = rh.get_order(order_id)
-        last = od
-        state = str(od.get("state") or od.get("status") or "").lower()
-        if state in ("filled", "completed"):
-            return od
-        if state in ("canceled", "rejected", "failed", "error"):
-            return od
-        time.sleep(poll)
-    return last
 
 def build():
     p = argparse.ArgumentParser("rhbot")
@@ -231,6 +299,7 @@ def build():
 if __name__ == "__main__":
     args = build().parse_args()
     args.func(args)
+
 
 
 
