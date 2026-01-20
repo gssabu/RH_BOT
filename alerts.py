@@ -12,7 +12,7 @@ SMTP_PORT = int(os.getenv("SMTP_PORT", "465"))
 ALERT_FROM = os.getenv("ALERT_FROM")
 ALERT_TO = os.getenv("ALERT_TO")
 
-def send_trade_email(message, subject=message):
+def send_trade_email(message, subject==message):
     msg = MIMEText(message)
     msg["Subject"] = subject
     msg["From"] = ALERT_FROM
@@ -31,6 +31,7 @@ def send_trade_email(message, subject=message):
         print(f"[email sent] {subject}")
     except Exception as e:
         print(f"[email error] {e}")
+
 
 
 
