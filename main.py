@@ -67,8 +67,7 @@ def cmd_sma_bot(a):
             atr_window=a.atr_window,
             rsi_window=a.rsi_window,
             trend_window=a.trend,
-            coin_limits = limits.get(args.symbol, {}) if 'limits' in globals() else {}
-            mb = coin_limits.get("max_buy_price")
+            mb = coin_limits.get("max_buy_price"),
             ms = coin_limits.get("min_sell_price")
         
 
@@ -215,6 +214,7 @@ def build():
 if __name__ == "__main__":
     args = build().parse_args()
     args.func(args)
+
 
 
 
