@@ -120,23 +120,6 @@ def cmd_sma_bot(a):
 
             sig = strat.update(p)
 
-            # trailing stop check
-            if position == 1:
-                peak = p if peak is None else max(peak, p)
-                drop_pct = (peak - p) / peak * 100 if peak else 0.0
-                if drop_pct >= risk.trail_pct:
-                    trade_usd = max(a.notional, min_usd)
-                    qty = qty_from_usd(symbol, trade_usd, side="sell", decimals=dec)
-                    if a.live:
-                        out = rh.market_order(symbol, "sell", quantity=qty)
-                        print(out)
-                    else:
-                        account.sell(symbol, qty, p)
-                        print(f"\n(paper) TRAIL STOP SELL {symbol} qty={qty} @ {p:.8f}")
-                        trade_msg = f"TRAIL SELL {symbol} qty={qty} @ {p:.8f}"                   
-                        send_trade_email(trade_msg)
-                    position, entry, peak = 0, None, None
-
             # entry/exit
             if sig in ("bull", "buy") and position == 0:
                 ok, why = risk.allow(a.notional)
@@ -224,6 +207,7 @@ def build():
 if __name__ == "__main__":
     args = build().parse_args()
     args.func(args)
+
 
 
 
