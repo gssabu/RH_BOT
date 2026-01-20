@@ -131,8 +131,8 @@ def cmd_sma_bot(a):
                         out = rh.market_order(symbol, "sell", quantity=qty)
                         print(out)
                     else:
-                        account.sell(qty, p, symbol)
-                        print(f"\n(paper) TRAIL STOP SELL {symbol} qty={qty} @ {p:.8f} | {account.summary(p)}")
+                        account.sell(symbol, qty, p)
+                        print(f"\n(paper) TRAIL STOP SELL {symbol} qty={qty} @ {p:.8f}")
                         trade_msg = f"TRAIL SELL {symbol} qty={qty} @ {p:.8f}"                   
                         send_trade_email(trade_msg)
                     position, entry, peak = 0, None, None
@@ -153,8 +153,8 @@ def cmd_sma_bot(a):
                         #send_trade_email(trade_msg)
                         risk.record(trade_usd)
                     else:
-                        account.buy(qty, p, symbol)
-                        print(f"\n(paper) BUY {symbol} qty={qty} @ {p:.8f} | {account.summary(p)}")
+                        account.buy(symbol, qty, p)
+                        print(f"\n(paper) BUY {symbol} qty={qty} @ {p:.8f}")
                         trade_msg = f"BUY {symbol} qty={qty} @ {p:.8f}"
                         #print(trade_msg)
                         send_trade_email(trade_msg)
@@ -169,8 +169,10 @@ def cmd_sma_bot(a):
                     #send_trade_email(trade_msg)
                     print(out)
                 else:
-                    account.sell(qty, p, symbol)
-                    print(f"\n(paper) SELL {symbol} qty={qty} @ {p:.8f} | {account.summary(p)}")
+                    held = account.positions[symbol].qty if symbol in account.positions else 0.0
+                    qty = min(held, qty_from_usd(symbol, trade_usd, side="sell", decimals=dec))
+                    account.sell(symbol, qty, p)
+                    print(f"\n(paper) SELL {symbol} qty={qty} @ {p:.8f}")
                     trade_msg = f"SELL {symbol} qty={qty} @ {p:.8f}"                   
                     send_trade_email(trade_msg)
                 position, entry, peak = 0, None, None
@@ -222,6 +224,7 @@ def build():
 if __name__ == "__main__":
     args = build().parse_args()
     args.func(args)
+
 
 
 
