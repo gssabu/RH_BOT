@@ -47,7 +47,7 @@ def cmd_market_order(a):
 
 def cmd_sma_bot(a):
     rh = RH()
-    account = PaperAccount(usd_start=10000.0)
+    account = PaperAccount(starting_usd=10000.0)
 
     if a.strategy == "sma":
         strat = SMAStrategy(a.short, a.long)
@@ -214,6 +214,7 @@ def build():
 if __name__ == "__main__":
     args = build().parse_args()
     args.func(args)
+
 
 
 
