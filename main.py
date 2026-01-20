@@ -48,24 +48,6 @@ def cmd_market_order(a):
 def cmd_sma_bot(a):
     rh = RH()
     account = PaperAccount(starting_usd=10000.0)
-    coin_limits = limits.get(args.symbol, {}) if 'limits' in globals() else {}
-    cfg = SwingConfig(
-        buy_pct=float(args.buy_pct),
-        sell_pct=float(args.sell_pct),
-        trend_window=int(args.trend),
-        rsi_window=int(getattr(args, "period", 14)),
-        atr_window=int(getattr(args, "period", 14)),
-        enable_rsi=not bool(getattr(args, "no_rsi", False)),
-        enable_atr=not bool(getattr(args, "no_atr", False)),
-        rsi_buy=35.0,          # tweak if you want
-        rsi_sell=65.0,         # tweak if you want
-        atr_cap_pct=5.0,       # or per-asset from limits
-        threshold_abs=float(getattr(args, "threshold", 0.0)),
-        trail_pct=float(getattr(args, "trail", 0.0)) if args.trail else None,
-    )
-
-    a = SwingWithTrend(cfg)
-
 
     if a.strategy == "sma":
         strat = SMAStrategy(a.short, a.long)
@@ -78,24 +60,32 @@ def cmd_sma_bot(a):
         coin = a.symbol.upper()   # "SHIB-USD"
         coin_limits = limits.get(coin, {})
 
-        strat = SwingWithTrend(
-            buy_pct=a.buy_pct,    
-            sell_pct=a.sell_pct,  
-            atr_mult=a.atr_mult,
-            atr_window=a.atr_window,
-            rsi_window=a.rsi_window,
-            trend_window=a.trend,
-            max_buy_price=coin_limits.get("max_buy_price"),
-            min_sell_price=coin_limits.get("min_sell_price")
+        cfg = SwingConfig(
+            buy_pct=float(a.buy_pct),
+            sell_pct=float(a.sell_pct),
+            trend_window=int(a.trend),
+            rsi_window=int(getattr(a, "rsi_window", 14)),
+            atr_window=int(getattr(a, "atr_window", 14)),
+            enable_rsi=not bool(getattr(a, "no_rsi", False)),
+            enable_atr=not bool(getattr(a, "no_atr", False)),
+            rsi_buy=35.0,
+            rsi_sell=65.0,
+            atr_cap_pct=5.0,
+            threshold_abs=float(getattr(a, "threshold", 0.0)),
+            trail_pct=(float(a.trail) if getattr(a, "trail", None) else None),
         )
-
+    
+        strat = SwingWithTrend(cfg)
+    
+        mb = coin_limits.get("max_buy_price")
+        ms = coin_limits.get("min_sell_price")
         print(
             "Running Swing-with-Trend strategy: "
             f"Buy%={a.buy_pct} "
             f"Sell%={a.sell_pct} "
             f"trend_window={a.trend} "
-            f"max_buy_price={_fmt('max_buy_price')} "
-            f"min_sell_price={_fmt('min_sell_price')}"
+            f"max_buy_price={_fmt(mb)} "
+            f"min_sell_price={_fmt(ms)}"
         )
         
     else:
@@ -232,6 +222,7 @@ def build():
 if __name__ == "__main__":
     args = build().parse_args()
     args.func(args)
+
 
 
 
