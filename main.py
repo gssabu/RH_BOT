@@ -195,10 +195,11 @@ def cmd_sma_bot(a):
                                             
                     else:
                         account.buy(symbol, qty, p)
+                        account.export_csv("paper_trades.csv")
                         print(f"\n(paper) BUY {symbol} qty={qty} @ {p:.8f}")
                         trade_msg = f"BUY {symbol} qty={qty} @ {p:.8f}"
                         #print(trade_msg)
-                        send_trade_email(trade_msg)
+                        #send_trade_email(trade_msg)
                     position, entry, peak = 1, p, p
 
             elif sig in ("bear", "sell") and position == 1:
@@ -254,7 +255,8 @@ def cmd_sma_bot(a):
                     account.sell(symbol, qty, p)
                     print(f"\n(paper) SELL {symbol} qty={qty} @ {p:.8f}")
                     trade_msg = f"SELL {symbol} qty={qty} @ {p:.8f}"                   
-                    send_trade_email(trade_msg)
+                    #send_trade_email(trade_msg)
+                    account.export_csv("paper_trades.csv")
                 position, entry, peak = 0, None, None
 
             time.sleep(a.period)
@@ -304,6 +306,7 @@ def build():
 if __name__ == "__main__":
     args = build().parse_args()
     args.func(args)
+
 
 
 
