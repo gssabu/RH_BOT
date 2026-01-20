@@ -69,13 +69,13 @@ def cmd_sma_bot(a):
             trend_window=a.trend,
             mb = coin_limits.get("max_buy_price")
             ms = coin_limits.get("min_sell_price")
-        )
+        
 
-        print(
-            f"Running Swing-with-Trend strategy: "
-            f"Buy%={a.buy_pct} Sell%={a.sell_pct} trend_window={a.trend} "
-            f"max_buy_price={_fmt(mb)} min_sell_price={_fmt(ms)}"
-        )
+            print(
+                f"Running Swing-with-Trend strategy: "
+                f"Buy%={a.buy_pct} Sell%={a.sell_pct} trend_window={a.trend} "
+                f"max_buy_price={_fmt(mb)} min_sell_price={_fmt(ms)}"
+            )
         
     else:
         strat = PriceMoveStrategy(threshold=a.threshold)
@@ -211,6 +211,7 @@ def build():
 if __name__ == "__main__":
     args = build().parse_args()
     args.func(args)
+
 
 
 
