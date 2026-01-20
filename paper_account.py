@@ -1,10 +1,10 @@
 # paper_account.py
-import os
-import csv
 from __future__ import annotations
 from dataclasses import dataclass, asdict
 from typing import Dict, List
 import time
+import os
+import csv
 
 @dataclass
 class Position:
@@ -169,6 +169,7 @@ class PaperAccount:
         )
         self.history.append(asdict(rec))
         self._append_csv_row(asdict(rec))
+
 
 
 
