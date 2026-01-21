@@ -23,6 +23,15 @@ class Fill:
     realized_pnl: float = 0.0
     cash_after: float = 0.0
 
+def _csv_escape(v):
+    if v is None:
+        return ""
+    s = str(v)
+    # quote if needed
+    if any(c in s for c in [",", '"', "\n"]):
+        s = '"' + s.replace('"', '""') + '"'
+    return s
+        
 class PaperAccount:
     def __init__(self, starting_usd: float = 10000.0, fee_bps: int = 35):
         self.usd: float = float(starting_usd)
@@ -124,14 +133,6 @@ class PaperAccount:
     def set_csv(self, path: str):
         self.csv_path = path
     
-    def _csv_escape(v):
-        if v is None:
-            return ""
-        s = str(v)
-        # quote if needed
-        if any(c in s for c in [",", '"', "\n"]):
-            s = '"' + s.replace('"', '""') + '"'
-        return s
     
     def _append_csv_row(self, row: dict):
         path = getattr(self, "csv_path", None)
@@ -201,6 +202,7 @@ class PaperAccount:
         )
         self.history.append(asdict(rec))
         self._append_csv_row(asdict(rec))
+
 
 
 
