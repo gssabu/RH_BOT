@@ -91,10 +91,12 @@ def cmd_market_order(a):
 
 
 def cmd_sma_bot(a):
+    symbol = a.symbol
     position = 0
     entry = None
     peak = None
     cycle_usd = 0.0
+    est_tranche_qty
     rh = RH()
     account = PaperAccount(starting_usd=11000.0)
     state_csv = "live_trades.csv" if a.live else "paper_trades.csv"
@@ -389,6 +391,7 @@ def build():
 if __name__ == "__main__":
     args = build().parse_args()
     args.func(args)
+
 
 
 
