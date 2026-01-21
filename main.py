@@ -40,8 +40,9 @@ def load_last_trade(csv_path: str, symbol: str):
         return None
     last = None
     with open(csv_path, newline="") as f:
-        r = csv.DictReader(f)
+        r = csv.DictReader(f, skipinitialspace=True)
         for row in r:
+            row = {k.strip(): v for k, v in row.items() if k is not None}
             sym = (row.get("symbol") or row.get("SYMBOL") or "")
             if sym.upper() == symbol.upper():
                 last = row
@@ -84,7 +85,7 @@ def cmd_market_order(a):
     if a.notional is not None:
         p = coinbase_spot(a.symbol)
         dec = ASSET_RULES.get(a.symbol, {}).get("decimals", 8)
-        qty = qty_from_usd(trade_usd, p, decimals=dec)
+        qty = qty_from_usd(a.notional, p, decimals=dec)
         res = rh.market_order(a.symbol, a.side, quantity=qty)  # send quantity
     else:
         res = rh.market_order(a.symbol, a.side, quantity=a.quantity)
@@ -386,6 +387,7 @@ def build():
 if __name__ == "__main__":
     args = build().parse_args()
     args.func(args)
+
 
 
 
