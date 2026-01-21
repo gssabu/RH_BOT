@@ -2,7 +2,7 @@
 import argparse, json, time, os
 from client import RH
 from feed import coinbase_spot, qty_from_usd
-from strategy import SMAStrategy, PriceMoveStrategy, SwingStrategy, SwingWithTrend
+from strategy import SwingWithTrend, SwingConfig
 from risk import Risk
 from paper_account import PaperAccount
 import datetime
@@ -16,6 +16,9 @@ ASSET_RULES = {
     "DOGE-USD": {"decimals": 2, "min_usd": 0.15},
     "SHIB-USD": {"decimals": 9, "min_usd": 0.05},
 }
+
+def _fmt(x, nd=8):
+    return f"{x:.{nd}f}" if isinstance(x, (int, float)) else "None"
 
 def load_limits(path="limits.json"):
     if not os.path.exists(path):
@@ -44,7 +47,7 @@ def cmd_market_order(a):
 
 def cmd_sma_bot(a):
     rh = RH()
-    account = PaperAccount(usd_start=10000.0)
+    account = PaperAccount(starting_usd=10000.0)
 
     if a.strategy == "sma":
         strat = SMAStrategy(a.short, a.long)
@@ -57,21 +60,34 @@ def cmd_sma_bot(a):
         coin = a.symbol.upper()   # "SHIB-USD"
         coin_limits = limits.get(coin, {})
 
-        strat = SwingWithTrend(
-            buy_pct=a.buy_pct,    
-            sell_pct=a.sell_pct,  
-            atr_mult=a.atr_mult,
-            atr_window=a.atr_window,
-            rsi_window=a.rsi_window,
-            trend_window=a.trend,
-            max_buy_price=coin_limits.get("max_buy_price"),
-            min_sell_price=coin_limits.get("min_sell_price")
+        cfg = SwingConfig(
+            buy_pct=float(a.buy_pct),
+            sell_pct=float(a.sell_pct),
+            trend_window=int(a.trend),
+            rsi_window=int(getattr(a, "rsi_window", 14)),
+            atr_window=int(getattr(a, "atr_window", 14)),
+            enable_rsi=not bool(getattr(a, "no_rsi", False)),
+            enable_atr=not bool(getattr(a, "no_atr", False)),
+            rsi_buy=35.0,
+            rsi_sell=65.0,
+            atr_cap_pct=5.0,
+            threshold_abs=float(getattr(a, "threshold", 0.0)),
+            trail_pct=(float(a.trail) if getattr(a, "trail", None) else None),
         )
-
-        print(f"Running Swing-with-Trend strategy: Buy%={a.buy_pct} Sell%={a.sell_pct} "
-              f"trend_window={a.trend} "
-              f"max_buy_price={coin_limits.get('max_buy_price'):.8f} "
-              f"min_sell_price={coin_limits.get('min_sell_price'):.8f}")
+    
+        strat = SwingWithTrend(cfg)
+    
+        mb = coin_limits.get("max_buy_price")
+        ms = coin_limits.get("min_sell_price")
+        print(
+            "Running Swing-with-Trend strategy: "
+            f"Buy%={a.buy_pct} "
+            f"Sell%={a.sell_pct} "
+            f"trend_window={a.trend} "
+            f"max_buy_price={_fmt(mb)} "
+            f"min_sell_price={_fmt(ms)}"
+        )
+        
     else:
         strat = PriceMoveStrategy(threshold=a.threshold)
         print(f"Running PriceMove strategy: threshold={a.threshold}")
@@ -115,8 +131,8 @@ def cmd_sma_bot(a):
                         out = rh.market_order(symbol, "sell", quantity=qty)
                         print(out)
                     else:
-                        account.sell(qty, p, symbol)
-                        print(f"\n(paper) TRAIL STOP SELL {symbol} qty={qty} @ {p:.8f} | {account.summary(p)}")
+                        account.sell(symbol, qty, p)
+                        print(f"\n(paper) TRAIL STOP SELL {symbol} qty={qty} @ {p:.8f}")
                         trade_msg = f"TRAIL SELL {symbol} qty={qty} @ {p:.8f}"                   
                         send_trade_email(trade_msg)
                     position, entry, peak = 0, None, None
@@ -137,8 +153,8 @@ def cmd_sma_bot(a):
                         #send_trade_email(trade_msg)
                         risk.record(trade_usd)
                     else:
-                        account.buy(qty, p, symbol)
-                        print(f"\n(paper) BUY {symbol} qty={qty} @ {p:.8f} | {account.summary(p)}")
+                        account.buy(symbol, qty, p)
+                        print(f"\n(paper) BUY {symbol} qty={qty} @ {p:.8f}")
                         trade_msg = f"BUY {symbol} qty={qty} @ {p:.8f}"
                         #print(trade_msg)
                         send_trade_email(trade_msg)
@@ -153,8 +169,10 @@ def cmd_sma_bot(a):
                     #send_trade_email(trade_msg)
                     print(out)
                 else:
-                    account.sell(qty, p, symbol)
-                    print(f"\n(paper) SELL {symbol} qty={qty} @ {p:.8f} | {account.summary(p)}")
+                    held = account.positions[symbol].qty if symbol in account.positions else 0.0
+                    qty = min(held, qty_from_usd(symbol, trade_usd, side="sell", decimals=dec))
+                    account.sell(symbol, qty, p)
+                    print(f"\n(paper) SELL {symbol} qty={qty} @ {p:.8f}")
                     trade_msg = f"SELL {symbol} qty={qty} @ {p:.8f}"                   
                     send_trade_email(trade_msg)
                 position, entry, peak = 0, None, None
@@ -206,6 +224,23 @@ def build():
 if __name__ == "__main__":
     args = build().parse_args()
     args.func(args)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
