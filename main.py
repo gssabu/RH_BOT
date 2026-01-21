@@ -278,7 +278,8 @@ def cmd_sma_bot(a):
                         position, entry, peak = 1, (pos.avg_cost if pos else p), p
                         cycle_qty = qty
 
-            elif position == 1 and (tp is not None and p >= tp) and sig in ("bear", "sell"):
+            #elif position == 1 and (tp is not None and p >= tp) and sig in ("bear", "sell"):
+            elif position == 1 and (tp is not None and p >= tp):
                 trade_usd = max(a.notional, min_usd)
                 held = account.positions.get(symbol).qty if symbol in account.positions else 0.0
                 target_qty = qty_from_usd(trade_usd, p, decimals=dec)
@@ -385,6 +386,7 @@ def build():
 if __name__ == "__main__":
     args = build().parse_args()
     args.func(args)
+
 
 
 
