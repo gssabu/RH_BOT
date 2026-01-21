@@ -29,6 +29,23 @@ def append_live_csv(path: str, row: dict):
         f.flush()
         os.fsync(f.fileno())
 
+def _to_float(x, default=0.0):
+    try:
+        return float(x)
+    except Exception:
+        return default
+
+def load_last_trade(csv_path: str, symbol: str):
+    if not os.path.exists(csv_path) or os.path.getsize(csv_path) == 0:
+        return None
+    last = None
+    with open(csv_path, newline="") as f:
+        r = csv.DictReader(f)
+        for row in r:
+            if (row.get("symbol") or "").upper() == symbol.upper():
+                last = row
+    return last
+
 def wait_for_fill(rh: RH, order_id: str, timeout=45, poll=1.0):
     t0 = time.time()
     last = None
@@ -77,10 +94,56 @@ def cmd_sma_bot(a):
     position = 0
     entry = None
     peak = None
-    cycle_qty = 0.0
-    held_qty = 0.0
+    cycle_usd = 0.0
     rh = RH()
-    account = PaperAccount(starting_usd=10000.0)
+    account = PaperAccount(starting_usd=11000.0)
+    state_csv = "live_trades.csv" if a.live else "paper_trades.csv"
+    last = load_last_trade(state_csv, symbol)
+    
+    # estimated tranche qty held (used in live mode safety)
+    est_tranche_qty = 0.0
+    
+    if last:
+        last_side = (last.get("side") or "").lower()
+        last_price = _to_float(last.get("price"), 0.0)
+        last_notional = _to_float(last.get("notional"), 0.0)
+        last_qty = _to_float(last.get("qty"), 0.0)
+    
+        # paper CSV has fee + cash_after. live CSV doesn't (currently).
+        last_fee = _to_float(last.get("fee"), 0.0) if "fee" in (last or {}) else 0.0
+        last_cash = _to_float(last.get("cash_after"), 0.0) if "cash_after" in (last or {}) else 0.0
+    
+        if last_side == "buy":
+            position = 1
+            cycle_usd = last_notional  # resume "sell the same $ value"
+            est_tranche_qty = last_qty
+    
+            # Use avg_cost if paper CSV has fee+notional, else fallback to price
+            if (not a.live) and last_qty > 0 and last_notional > 0:
+                entry = (last_notional + last_fee) / last_qty
+            else:
+                entry = last_price
+    
+            peak = last_price
+    
+            if not a.live:
+                # resync paper account so it matches your last saved state
+                # (requires Position import if you want to set holdings explicitly)
+                account.usd = last_cash
+                # If PaperAccount already has positions from earlier rows you didn't replay,
+                # then this won't rebuild everything. Best is to replay the whole CSV later.
+            print(f"[resume] last=BUY, entry={entry:.8f}, cycle_usd={cycle_usd}, est_qty={est_tranche_qty}")
+    
+        elif last_side == "sell":
+            position = 0
+            entry = None
+            peak = None
+            cycle_usd = 0.0
+            est_tranche_qty = 0.0
+            if not a.live:
+                account.usd = last_cash
+            print("[resume] last=SELL, starting flat")
+
 
     if a.strategy == "sma":
         strat = SMAStrategy(a.short, a.long)
@@ -165,7 +228,8 @@ def cmd_sma_bot(a):
                     print("blocked buy:", why)
                 else:
                     trade_usd = max(a.notional, min_usd)
-                    qty = qty_from_usd(trade_usd, p, decimals=dec)
+                    cycle_usd = trade_usd
+                    qty = qty_from_usd(a.notional, p, decimals=dec)
                     if a.live:
                         out = rh.market_order(symbol, "buy", quantity=qty)
                         order_id = out.get("id") or out.get("order_id")
@@ -194,8 +258,10 @@ def cmd_sma_bot(a):
                         }
                     
                         if str(state).lower() in ("filled", "completed"):
+                            est_tranche_qty = float(filled_qty)
                             append_live_csv("live_trades.csv", row)
                             cycle_qty = float(filled_qty)
+                            cycle_usd = trade_usd
                             position, entry, peak = 1, float(avg_price), float(avg_price)
 
                     
@@ -211,6 +277,7 @@ def cmd_sma_bot(a):
                         trade_msg = f"BUY {symbol} qty={qty} @ {p:.8f}"
                         #print(trade_msg)
                         #send_trade_email(trade_msg)
+                        cycle_usd = trade_usd
                         pos = account.positions.get(symbol)
                         position, entry, peak = 1, (pos.avg_cost if pos else p), p
                         cycle_qty = qty
@@ -219,10 +286,10 @@ def cmd_sma_bot(a):
                 trade_usd = max(a.notional, min_usd)
                 held = account.positions.get(symbol).qty if symbol in account.positions else 0.0
                 target_qty = qty_from_usd(trade_usd, p, decimals=dec)
-                qty = min(held, target_qty)
+                qty = min(held, qty_from_usd(cycle_usd, p, decimals=dec))
                 if a.live:
-                    qty = cycle_qty
-                
+                    qty = qty_from_usd(cycle_usd, p, decimals=dec)
+                    qty = min(qty, est_tranche_qty)
                     if qty <= 0:
                         print("Live SELL blocked: held_qty is 0")
                     else:
@@ -255,6 +322,8 @@ def cmd_sma_bot(a):
                         if str(state).lower() in ("filled", "completed"):
                             append_live_csv("live_trades.csv", row)
                             cycle_qty = 0.0
+                            est_tranche_qty = 0.0
+                            cycle_usd = 0.0
                             position, entry, peak = 0, None, None
                 
                         trade_msg = f"SELL {symbol} qty={qty} @ {p:.8f} state={state}"
@@ -264,7 +333,7 @@ def cmd_sma_bot(a):
                     trade_usd = max(a.notional, min_usd)
                     target_qty = qty_from_usd(trade_usd, p, decimals=dec)
                     held = account.positions.get(symbol).qty if symbol in account.positions else 0.0
-                    qty = min(held, cycle_qty)
+                    qty = min(held, qty_from_usd(cycle_usd, p, decimals=dec))
                     account.sell(symbol, qty, p)
                     print(f"\n(paper) SELL {symbol} qty={qty} @ {p:.8f}")
                     trade_msg = f"SELL {symbol} qty={qty} @ {p:.8f}"                   
@@ -320,6 +389,7 @@ def build():
 if __name__ == "__main__":
     args = build().parse_args()
     args.func(args)
+
 
 
 
