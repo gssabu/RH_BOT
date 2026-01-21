@@ -124,37 +124,67 @@ class PaperAccount:
     def set_csv(self, path: str):
         self.csv_path = path
     
+    def _csv_escape(v):
+        if v is None:
+            return ""
+        s = str(v)
+        # quote if needed
+        if any(c in s for c in [",", '"', "\n"]):
+            s = '"' + s.replace('"', '""') + '"'
+        return s
+    
     def _append_csv_row(self, row: dict):
         path = getattr(self, "csv_path", None)
         if not path:
             return
     
-        keys = ["TS","SYMBOL","SIDE","QTY","PRICE","FEE","NOTIONAL","REALIZED_PNL","BALANCE"]
-        #f.write(", ".join(k.upper() for k in keys) + "\n")
+        cols = [
+            ("ts", "TS"),
+            ("symbol", "SYMBOL"),
+            ("side", "SIDE"),
+            ("qty", "QTY"),
+            ("price", "PRICE"),
+            ("fee", "FEE"),
+            ("notional", "NOTIONAL"),
+            ("realized_pnl", "REALIZED_PNL"),
+            ("cash_after", "BALANCE"),
+        ]
+    
         new_file = not os.path.exists(path) or os.path.getsize(path) == 0
     
         with open(path, "a", newline="") as f:
-            w = csv.DictWriter(f, fieldnames=keys)
             if new_file:
-                w.writeheader()
-            w.writerow({k: row.get(k) for k in keys})
+                f.write(", ".join(h for _, h in cols) + "\n")
+    
+            line = ", ".join(_csv_escape(row.get(k)) for k, _ in cols) + "\n"
+            f.write(line)
             f.flush()
             os.fsync(f.fileno())
     
     def export_csv(self, path: str = "paper_trades.csv"):
-        # full export (handy), but the important part is _append_csv_row per trade
-        keys = ["TS","SYMBOL","SIDE","QTY","PRICE","FEE","NOTIONAL","REALIZED_PNL","BALANCE"]
-        #f.write(", ".join(k.upper() for k in keys) + "\n")
+        cols = [
+            ("ts", "TS"),
+            ("symbol", "SYMBOL"),
+            ("side", "SIDE"),
+            ("qty", "QTY"),
+            ("price", "PRICE"),
+            ("fee", "FEE"),
+            ("notional", "NOTIONAL"),
+            ("realized_pnl", "REALIZED_PNL"),
+            ("cash_after", "BALANCE"),
+        ]
+    
         tmp = path + ".tmp"
         with open(tmp, "w", newline="") as f:
-            w = csv.DictWriter(f, fieldnames=keys)
-            w.writeheader()
+            f.write(", ".join(h for _, h in cols) + "\n")
             for row in self.history:
-                w.writerow({k: row.get(k) for k in keys})
+                f.write(", ".join(_csv_escape(row.get(k)) for k, _ in cols) + "\n")
             f.flush()
             os.fsync(f.fileno())
+    
         os.replace(tmp, path)
         return path
+
 
     # --- internals ---
     def _record(self, symbol, side, qty, price, fee, notional, realized):
@@ -171,6 +201,7 @@ class PaperAccount:
         )
         self.history.append(asdict(rec))
         self._append_csv_row(asdict(rec))
+
 
 
 
