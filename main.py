@@ -343,8 +343,11 @@ def cmd_sma_bot(a):
             time.sleep(a.period)
 
     except KeyboardInterrupt:
-        fname = account.export_csv()
-        print(f"\nStopped. Trade history saved to {fname}")
+        if a.live:
+            print("Stopped. Live mode...")
+        else:
+            fname = account.export_csv()
+            print(f"Stopped. Trade history saved to {fname}")
         
 
 def build():
@@ -387,6 +390,7 @@ def build():
 if __name__ == "__main__":
     args = build().parse_args()
     args.func(args)
+
 
 
 
