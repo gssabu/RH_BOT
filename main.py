@@ -72,7 +72,13 @@ def cmd_market_order(a):
         res = rh.market_order(a.symbol, a.side, quantity=a.quantity)
     print(json.dumps(res, indent=2))
 
+
 def cmd_sma_bot(a):
+    position = 0
+    entry = None
+    peak = None
+    cycle_qty = 0.0
+    held_qty = 0.0
     rh = RH()
     account = PaperAccount(starting_usd=10000.0)
 
@@ -148,6 +154,10 @@ def cmd_sma_bot(a):
             sig = strat.update(p)
             if isinstance(sig, dict):
                 sig = sig.get("signal")
+            tp = None
+            if position == 1 and entry is not None:
+                tp = float(entry) * (1.0 + float(a.sell_pct) / 100.0)
+
             # entry/exit
             if sig in ("bull", "buy") and position == 0:
                 ok, why = risk.allow(a.notional)
@@ -185,8 +195,9 @@ def cmd_sma_bot(a):
                     
                         if str(state).lower() in ("filled", "completed"):
                             append_live_csv("live_trades.csv", row)
-                            held_qty = float(filled_qty)
-                            position, entry, peak = 1, avg_price, avg_price
+                            cycle_qty = float(filled_qty)
+                            position, entry, peak = 1, float(avg_price), float(avg_price)
+
                     
                         trade_msg = f"BUY {symbol} qty={qty} @ {p:.8f} state={state}"
                         print(trade_msg)
@@ -200,15 +211,17 @@ def cmd_sma_bot(a):
                         trade_msg = f"BUY {symbol} qty={qty} @ {p:.8f}"
                         #print(trade_msg)
                         #send_trade_email(trade_msg)
-                        position, entry, peak = 1, p, p
+                        pos = account.positions.get(symbol)
+                        position, entry, peak = 1, (pos.avg_cost if pos else p), p
+                        cycle_qty = qty
 
-            elif sig in ("bear", "sell") and position == 1:
+            elif position == 1 and (tp is not None and p >= tp) and sig in ("bear", "sell"):
                 trade_usd = max(a.notional, min_usd)
                 held = account.positions.get(symbol).qty if symbol in account.positions else 0.0
                 target_qty = qty_from_usd(trade_usd, p, decimals=dec)
                 qty = min(held, target_qty)
                 if a.live:
-                    qty = held_qty  # sell what you actually bought
+                    qty = cycle_qty
                 
                     if qty <= 0:
                         print("Live SELL blocked: held_qty is 0")
@@ -241,7 +254,7 @@ def cmd_sma_bot(a):
                 
                         if str(state).lower() in ("filled", "completed"):
                             append_live_csv("live_trades.csv", row)
-                            held_qty = 0.0
+                            cycle_qty = 0.0
                             position, entry, peak = 0, None, None
                 
                         trade_msg = f"SELL {symbol} qty={qty} @ {p:.8f} state={state}"
@@ -249,14 +262,15 @@ def cmd_sma_bot(a):
                     
                 else:
                     trade_usd = max(a.notional, min_usd)
-                    held = account.positions[symbol].qty if symbol in account.positions else 0.0
                     target_qty = qty_from_usd(trade_usd, p, decimals=dec)
-                    qty = min(held, target_qty)
+                    held = account.positions.get(symbol).qty if symbol in account.positions else 0.0
+                    qty = min(held, cycle_qty)
                     account.sell(symbol, qty, p)
                     print(f"\n(paper) SELL {symbol} qty={qty} @ {p:.8f}")
                     trade_msg = f"SELL {symbol} qty={qty} @ {p:.8f}"                   
                     #send_trade_email(trade_msg)
                     account.export_csv("paper_trades.csv")
+                    cycle_qty = 0.0
                     position, entry, peak = 0, None, None
 
             time.sleep(a.period)
@@ -306,6 +320,7 @@ def build():
 if __name__ == "__main__":
     args = build().parse_args()
     args.func(args)
+
 
 
 
