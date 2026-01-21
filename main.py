@@ -96,7 +96,7 @@ def cmd_sma_bot(a):
     entry = None
     peak = None
     cycle_usd = 0.0
-    est_tranche_qty
+    est_tranche_qty = 0.0
     rh = RH()
     account = PaperAccount(starting_usd=11000.0)
     state_csv = "live_trades.csv" if a.live else "paper_trades.csv"
@@ -391,6 +391,7 @@ def build():
 if __name__ == "__main__":
     args = build().parse_args()
     args.func(args)
+
 
 
 
