@@ -42,7 +42,8 @@ def load_last_trade(csv_path: str, symbol: str):
     with open(csv_path, newline="") as f:
         r = csv.DictReader(f)
         for row in r:
-            if (row.get("symbol") or "").upper() == symbol.upper():
+            sym = (row.get("symbol") or row.get("SYMBOL") or "")
+            if sym.upper() == symbol.upper():
                 last = row
     return last
 
@@ -106,14 +107,12 @@ def cmd_sma_bot(a):
     est_tranche_qty = 0.0
     
     if last:
-        last_side = (last.get("side") or "").lower()
-        last_price = _to_float(last.get("price"), 0.0)
-        last_notional = _to_float(last.get("notional"), 0.0)
-        last_qty = _to_float(last.get("qty"), 0.0)
-    
-        # paper CSV has fee + cash_after. live CSV doesn't (currently).
-        last_fee = _to_float(last.get("fee"), 0.0) if "fee" in (last or {}) else 0.0
-        last_cash = _to_float(last.get("cash_after"), 0.0) if "cash_after" in (last or {}) else 0.0
+        last_side = (last.get("side") or last.get("SIDE") or "").lower()
+        last_price = _to_float(last.get("price") or last.get("PRICE"), 0.0)
+        last_notional = _to_float(last.get("notional") or last.get("NOTIONAL"), 0.0)
+        last_qty = _to_float(last.get("qty") or last.get("QTY"), 0.0)
+        last_fee = _to_float(last.get("fee") or last.get("FEE"), 0.0)
+        last_cash = _to_float(last.get("cash_after") or last.get("BALANCE"), 0.0)
     
         if last_side == "buy":
             position = 1
@@ -197,11 +196,6 @@ def cmd_sma_bot(a):
         cooldown=6,
         trail_pct=a.trail,
     )
-
-    symbol = a.symbol
-    position = 0
-    entry = None
-    peak = None
 
     dec = ASSET_RULES.get(symbol, {}).get("decimals", 8)
     min_usd = ASSET_RULES.get(symbol, {}).get("min_usd", 0.05)
@@ -391,6 +385,7 @@ def build():
 if __name__ == "__main__":
     args = build().parse_args()
     args.func(args)
+
 
 
 
