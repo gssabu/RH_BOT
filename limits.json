@@ -26,17 +26,17 @@
     "min_notional": 1.00,
     "max_notional_per_order": 1000.0,
     "max_position_usd": 2000.0,
-    "slippage_bps": 75,
+    "slippage_bps": 50,
     "trade_halt": false
   },
   "SHIB-USD": {
     "price_decimals": 8,
     "qty_decimals": 8,
-    "min_qty": 1000.0,
+    "min_qty": 100.0,
     "min_notional": 1.00,
     "max_notional_per_order": 1000.0,
     "max_position_usd": 2000.0,
-    "slippage_bps": 85,
+    "slippage_bps": 50,
     "trade_halt": false
   },
   "SOL-USD": {
