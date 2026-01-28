@@ -31,7 +31,7 @@
   },
   "SHIB-USD": {
     "price_decimals": 8,
-    "qty_decimals": 8,
+    "qty_decimals": 0,
     "min_qty": 100.0,
     "min_notional": 1.00,
     "max_notional_per_order": 1000.0,
