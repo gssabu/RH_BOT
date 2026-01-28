@@ -15,7 +15,7 @@ ASSET_RULES = {
     "BTC-USD": {"decimals": 2, "min_usd": 0.01},
     "ETH-USD": {"decimals": 2, "min_usd": 0.10},
     "DOGE-USD": {"decimals": 2, "min_usd": 0.15},
-    "SHIB-USD": {"decimals": 9, "min_usd": 0.05},
+    "SHIB-USD": {"decimals": 0, "min_usd": 0.05},
 }
 
 def append_live_csv(path: str, row: dict):
@@ -228,7 +228,7 @@ def cmd_sma_bot(a):
                     cycle_usd = trade_usd
                     qty = qty_from_usd(a.notional, p, decimals=dec)
                     if a.live:
-                        out = rh.market_order(symbol, "buy", quantity=qty)
+                        out = rh.market_order(symbol, "buy", usd_notional=trade_usd)
                         order_id = out.get("id") or out.get("order_id")
                     
                         filled = wait_for_fill(rh, order_id) if order_id else out
@@ -291,7 +291,7 @@ def cmd_sma_bot(a):
                     if qty <= 0:
                         print("Live SELL blocked: held_qty is 0")
                     else:
-                        out = rh.market_order(symbol, "sell", quantity=qty)
+                        out = rh.market_order(symbol, "sell", usd_notional=trade_usd)
                         order_id = out.get("id") or out.get("order_id")
                 
                         filled = wait_for_fill(rh, order_id) if order_id else out
@@ -390,6 +390,7 @@ def build():
 if __name__ == "__main__":
     args = build().parse_args()
     args.func(args)
+
 
 
 
