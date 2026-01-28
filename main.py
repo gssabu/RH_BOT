@@ -228,7 +228,7 @@ def cmd_sma_bot(a):
                     cycle_usd = trade_usd
                     qty = qty_from_usd(a.notional, p, decimals=dec)
                     if a.live:
-                        out = rh.market_order(symbol, "buy", usd_notional=trade_usd)
+                        out = rh.market_order(symbol, "buy", quantity=qty)
                         order_id = out.get("id") or out.get("order_id")
                     
                         filled = wait_for_fill(rh, order_id) if order_id else out
@@ -291,7 +291,7 @@ def cmd_sma_bot(a):
                     if qty <= 0:
                         print("Live SELL blocked: held_qty is 0")
                     else:
-                        out = rh.market_order(symbol, "sell", usd_notional=trade_usd)
+                        out = rh.market_order(symbol, "sell", quantity=qty)
                         order_id = out.get("id") or out.get("order_id")
                 
                         filled = wait_for_fill(rh, order_id) if order_id else out
@@ -390,6 +390,7 @@ def build():
 if __name__ == "__main__":
     args = build().parse_args()
     args.func(args)
+
 
 
 
