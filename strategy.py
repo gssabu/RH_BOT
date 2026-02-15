@@ -117,18 +117,18 @@ class SwingWithTrend:
         self.last_sell_price: Optional[float] = None
 
     def on_fill(self, side: str, price: float) -> None:
-    # Call this from main.py when an order is actually filled
-    if self.start_price is None:
-        self.start_price = float(price)
-
-    if side.lower() == "sell":
-        self.last_sell_price = float(price)
-        # reset trailing context for next cycle
-        self.high_water = None
-
-    if side.lower() == "buy" and self.cfg.trail_pct is not None:
-        # start trailing from entry
-        self.high_water = float(price)
+        # Call this from main.py when an order is actually filled
+        if self.start_price is None:
+            self.start_price = float(price)
+    
+        if side.lower() == "sell":
+            self.last_sell_price = float(price)
+            # reset trailing context for next cycle
+            self.high_water = None
+    
+        if side.lower() == "buy" and self.cfg.trail_pct is not None:
+            # start trailing from entry
+            self.high_water = float(price)
 
     
     def _trend_sma(self) -> Optional[float]:
@@ -194,4 +194,5 @@ class SwingWithTrend:
             return {"signal": "buy", "reason": "drop_from_anchor", "anchor": anchor, "drop_pct": drop_pct, "sma": sma, "rsi": rsi_val, "atr_pct": atr_pct}
 
         return None
+
 
