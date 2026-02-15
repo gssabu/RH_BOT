@@ -113,14 +113,37 @@ class SwingWithTrend:
         self.atr = ATRLite(cfg.atr_window) if cfg.enable_atr else None
         self.prev_price: Optional[float] = None
         self.high_water: Optional[float] = None  # for optional trailing logic
+        self.start_price: Optional[float] = None
+        self.last_sell_price: Optional[float] = None
 
+    def on_fill(self, side: str, price: float) -> None:
+    # Call this from main.py when an order is actually filled
+    if self.start_price is None:
+        self.start_price = float(price)
+
+    if side.lower() == "sell":
+        self.last_sell_price = float(price)
+        # reset trailing context for next cycle
+        self.high_water = None
+
+    if side.lower() == "buy" and self.cfg.trail_pct is not None:
+        # start trailing from entry
+        self.high_water = float(price)
+
+    
     def _trend_sma(self) -> Optional[float]:
         if len(self.prices) < self.prices.maxlen:
             return None
         return sum(self.prices) / len(self.prices)
+        
 
     def update(self, price: float) -> Optional[Dict[str, Any]]:
         # threshold filter on raw ticks
+        if self.start_price is None:
+            self.start_price = price
+        anchor = self.last_sell_price if self.last_sell_price is not None else self.start_price
+        drop_pct = (price / anchor - 1.0) * 100.0
+        
         if self.prev_price is not None and self.cfg.threshold_abs > 0:
             if abs(price - self.prev_price) < self.cfg.threshold_abs:
                 return None
@@ -154,7 +177,7 @@ class SwingWithTrend:
                 return {"signal": "sell", "reason": "trail_stop", "sma": sma, "rsi": rsi_val, "atr_pct": atr_pct, "dev_pct": dev_pct}
 
         # Core swing logic around SMA bands
-        want_buy = dev_pct <= -float(self.cfg.buy_pct)
+        want_buy = drop_pct <= -float(self.cfg.buy_pct)
         want_sell = dev_pct >=  float(self.cfg.sell_pct)
 
         # Apply RSI gates if enabled
@@ -168,6 +191,7 @@ class SwingWithTrend:
         if want_sell:
             return {"signal": "sell", "reason": "above_band", "sma": sma, "rsi": rsi_val, "atr_pct": atr_pct, "dev_pct": dev_pct}
         if want_buy:
-            return {"signal": "buy", "reason": "below_band", "sma": sma, "rsi": rsi_val, "atr_pct": atr_pct, "dev_pct": dev_pct}
+            return {"signal": "buy", "reason": "drop_from_anchor", "anchor": anchor, "drop_pct": drop_pct, "sma": sma, "rsi": rsi_val, "atr_pct": atr_pct}
 
         return None
+
