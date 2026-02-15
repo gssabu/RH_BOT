@@ -119,6 +119,11 @@ def cmd_sma_bot(a):
                 continue
 
             sig = strat.update(p)
+            signal = None
+            if isinstance(sig, dict):
+                signal = sig.get("signal")
+            else:
+                signal = sig
 
             # trailing stop check
             if position == 1:
@@ -138,13 +143,13 @@ def cmd_sma_bot(a):
                     position, entry, peak = 0, None, None
 
             # entry/exit
-            if sig in ("bull", "buy") and position == 0:
+            if signal in ("bull", "buy") and position == 0:
                 ok, why = risk.allow(a.notional)
                 if not ok:
                     print("blocked buy:", why)
                 else:
                     trade_usd = max(a.notional, min_usd)
-                    qty = qty_from_usd(symbol, trade_usd, side="buy", decimals=dec)
+                    qty = qty_from_usd(trade_usd, p, decimals=dec)
                     if a.live:
                         out = rh.market_order(symbol, "buy", quantity=qty)
                         print(out)
@@ -152,26 +157,30 @@ def cmd_sma_bot(a):
                         print(trade_msg)
                         #send_trade_email(trade_msg)
                         risk.record(trade_usd)
+                        strat.on_fill("buy", p)
                     else:
                         account.buy(symbol, qty, p)
                         print(f"\n(paper) BUY {symbol} qty={qty} @ {p:.8f}")
                         trade_msg = f"BUY {symbol} qty={qty} @ {p:.8f}"
                         #print(trade_msg)
                         send_trade_email(trade_msg)
+                        strat.on_fill("buy", p)
                     position, entry, peak = 1, p, p
 
-            elif sig in ("bear", "sell") and position == 1:
+            elif signal in ("bear", "sell") and position == 1:
                 trade_usd = max(a.notional, min_usd)
-                qty = min(account.asset, qty_from_usd(symbol, trade_usd, side="sell", decimals=dec))
+                qty = min(account.asset, qty_from_usd(trade_usd, p, decimals=dec))
                 if a.live:
                     out = rh.market_order(symbol, "sell", quantity=qty)
                     trade_msg = f"\nSELL {symbol} qty={qty} @ {p:.8f}"
+                    strat.on_fill("buy", p)
                     #send_trade_email(trade_msg)
                     print(out)
                 else:
                     held = account.positions[symbol].qty if symbol in account.positions else 0.0
                     qty = min(held, qty_from_usd(symbol, trade_usd, side="sell", decimals=dec))
                     account.sell(symbol, qty, p)
+                    strat.on_fill("buy", p)
                     print(f"\n(paper) SELL {symbol} qty={qty} @ {p:.8f}")
                     trade_msg = f"SELL {symbol} qty={qty} @ {p:.8f}"                   
                     send_trade_email(trade_msg)
@@ -224,6 +233,7 @@ def build():
 if __name__ == "__main__":
     args = build().parse_args()
     args.func(args)
+
 
 
 
