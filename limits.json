@@ -1,5 +1,52 @@
 {
-  "BTC-USD": { "max_buy_price": 120000, "min_sell_price": 110000 },
-  "DOGE-USD": { "max_buy_price": 0.22, "min_sell_price": 0.19 },
-  "SHIB-USD": { "max_buy_price": 0.000013, "min_sell_price": 0.000008 }
+  "BTC-USD": {
+    "price_decimals": 2,
+    "qty_decimals": 8,
+    "min_qty": 0.00001,
+    "min_notional": 1.00,
+    "max_notional_per_order": 5000.0,
+    "max_position_usd": 10000.0,
+    "slippage_bps": 50,
+    "trade_halt": false
+  },
+  "ETH-USD": {
+    "price_decimals": 2,
+    "qty_decimals": 8,
+    "min_qty": 0.0001,
+    "min_notional": 1.00,
+    "max_notional_per_order": 4000.0,
+    "max_position_usd": 8000.0,
+    "slippage_bps": 50,
+    "trade_halt": false
+  },
+  "DOGE-USD": {
+    "price_decimals": 5,
+    "qty_decimals": 2,
+    "min_qty": 1.0,
+    "min_notional": 1.00,
+    "max_notional_per_order": 1000.0,
+    "max_position_usd": 2000.0,
+    "slippage_bps": 75,
+    "trade_halt": false
+  },
+  "SHIB-USD": {
+    "price_decimals": 8,
+    "qty_decimals": 8,
+    "min_qty": 1000.0,
+    "min_notional": 1.00,
+    "max_notional_per_order": 1000.0,
+    "max_position_usd": 2000.0,
+    "slippage_bps": 85,
+    "trade_halt": false
+  },
+  "SOL-USD": {
+    "price_decimals": 2,
+    "qty_decimals": 5,
+    "min_qty": 0.001,
+    "min_notional": 1.00,
+    "max_notional_per_order": 2000.0,
+    "max_position_usd": 4000.0,
+    "slippage_bps": 50,
+    "trade_halt": false
+  }
 }
