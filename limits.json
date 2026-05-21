@@ -2,11 +2,11 @@
   "BTC-USD": {
     "price_decimals": 2,
     "qty_decimals": 8,
-    "min_qty": 0.00001,
+    "min_qty": 0.000001,
     "min_notional": 1.00,
     "max_notional_per_order": 5000.0,
-    "max_position_usd": 10000.0,
-    "slippage_bps": 50,
+    "max_position_usd": 50000.0,
+    "slippage_bps": 75,
     "trade_halt": false
   },
   "ETH-USD": {
@@ -24,8 +24,8 @@
     "qty_decimals": 2,
     "min_qty": 1.0,
     "min_notional": 1.00,
-    "max_notional_per_order": 1000.0,
-    "max_position_usd": 2000.0,
+    "max_notional_per_order": 5000.0,
+    "max_position_usd": 20000.0,
     "slippage_bps": 75,
     "trade_halt": false
   },
@@ -34,10 +34,10 @@
     "qty_decimals": 8,
     "min_qty": 1000.0,
     "min_notional": 1.00,
-    "max_notional_per_order": 1000.0,
-    "max_position_usd": 2000.0,
+    "max_notional_per_order": 5000.0,
+    "max_position_usd": 20000.0,
     "slippage_bps": 85,
-    "trade_halt": false
+    "trade_halt": false 
   },
   "SOL-USD": {
     "price_decimals": 2,
