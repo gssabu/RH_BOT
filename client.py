@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 BASE = "https://trading.robinhood.com"
-ORDERS = "/api/v1/crypto/trading/orders/"
+ORDERS = "/api/v2/crypto/trading/orders/"
 
 def _canon(d: dict | None) -> str:
     if not d: return ""
