@@ -12,4 +12,4 @@ source env/bin/activate
 
 pip install -r requirements.txt
 
-python main.py sma-bot --symbol DOGE-USD --strategy swingT --threshold 0.0001 --trend 10 --period 10 --notional 9000 --no-atr --no-rsi
+python main.py sma-bot --symbol DOGE-USD --strategy swingT --threshold 0.0001 --trend 10 --period 10 --notional 100 --no-atr --no-rsi
