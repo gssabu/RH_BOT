@@ -126,3 +126,21 @@ class PaperAccount:
             cash_after=round(self.usd, 8),
         )
         self.history.append(asdict(rec))
+
+
+    def export_csv(self, filename=None):
+        import csv, time
+    
+        filename = filename or f"paper_trades_{int(time.time())}.csv"
+    
+        fields = [
+            "ts", "symbol", "side", "qty", "price",
+            "fee", "notional", "realized_pnl", "cash_after"
+        ]
+    
+        with open(filename, "w", newline="") as f:
+            writer = csv.DictWriter(f, fieldnames=fields)
+            writer.writeheader()
+            writer.writerows(self.history)
+    
+        return filename
