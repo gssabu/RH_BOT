@@ -2,7 +2,7 @@
 import argparse, json, time, os
 from client import RH
 from feed import coinbase_spot, qty_from_usd
-from strategy import SwingWithTrend, SwingConfig
+from strategy import SMAStrategy, SwingWithTrend, SwingConfig
 from risk import Risk
 from paper_account import PaperAccount
 import datetime
@@ -37,12 +37,18 @@ def cmd_list(_):
 
 def cmd_market_order(a):
     rh = RH()
+
     if a.notional is not None:
-        dec = ASSET_RULES.get(a.symbol, {}).get("decimals", 8)
-        qty = qty_from_usd(a.symbol, a.notional, side=a.side, decimals=dec)
-        res = rh.market_order(a.symbol, a.side, quantity=qty)  # send quantity
+        if a.side == "buy":
+            res = rh.market_order(a.symbol, a.side, usd_notional=a.notional)
+        else:
+            price = coinbase_spot(a.symbol)
+            dec = ASSET_RULES.get(a.symbol, {}).get("decimals", 8)
+            qty = qty_from_usd(a.notional, price, decimals=dec)
+            res = rh.market_order(a.symbol, a.side, quantity=qty)
     else:
         res = rh.market_order(a.symbol, a.side, quantity=a.quantity)
+
     print(json.dumps(res, indent=2))
 
 def cmd_sma_bot(a):
@@ -169,21 +175,21 @@ def cmd_sma_bot(a):
 
             elif signal in ("bear", "sell") and position == 1:
                 trade_usd = max(a.notional, min_usd)
-                qty = min(account.asset, qty_from_usd(trade_usd, p, decimals=dec))
+                qty = qty_from_usd(trade_usd, p, decimals=dec)
+            
                 if a.live:
                     out = rh.market_order(symbol, "sell", quantity=qty)
-                    trade_msg = f"\nSELL {symbol} qty={qty} @ {p:.8f}"
-                    strat.on_fill("buy", p)
-                    #send_trade_email(trade_msg)
                     print(out)
+                    strat.on_fill("sell", p)
                 else:
                     held = account.positions[symbol].qty if symbol in account.positions else 0.0
-                    qty = min(held, qty_from_usd(symbol, trade_usd, side="sell", decimals=dec))
-                    account.sell(symbol, qty, p)
-                    strat.on_fill("buy", p)
-                    print(f"\n(paper) SELL {symbol} qty={qty} @ {p:.8f}")
-                    trade_msg = f"SELL {symbol} qty={qty} @ {p:.8f}"                   
-                    send_trade_email(trade_msg)
+                    qty = min(held, qty)
+                    if qty > 0:
+                        account.sell(symbol, qty, p)
+                        strat.on_fill("sell", p)
+                        print(f"\n(paper) SELL {symbol} qty={qty} @ {p:.8f}")
+                        send_trade_email(f"SELL {symbol} qty={qty} @ {p:.8f}")
+            
                 position, entry, peak = 0, None, None
 
             time.sleep(a.period)
@@ -216,7 +222,7 @@ def build():
     s3.add_argument("--notional", type=float, default=0.05, help="USD per trade")
     s3.add_argument("--live", action="store_true", help="send real orders")
     s3.add_argument("--trail", type=float, default=2.0, help="trailing stop in %")
-    s3.add_argument("--strategy", choices=["sma", "move", "swing", "swingT"], default="sma", help="strategy type")
+    s3.add_argument("--strategy", choices=["sma", "swingT"], default="swingT")    
     s3.add_argument("--threshold", type=float, default=0.0001, help="price move threshold (for 'move' strategy)")
     s3.add_argument("--trend", type=int, default=50, help="trend SMA window (for swing)")
     s3.add_argument("--no-atr", action="store_true", help="disable ATR filter")
