@@ -77,7 +77,7 @@ class PaperAccount:
         proceeds = notional - fee
 
         # realized PnL uses avg_cost that includes buy fees
-        realized = (price - p.avg_cost) * qty - 0.0  # sell-fee already subtracted via proceeds
+        realized = (price - p.avg_cost) * qty - fee  # sell-fee already subtracted via proceeds
         self.realized_pnl_total += realized
         if realized >= 0:
             self.wins += 1
